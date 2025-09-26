@@ -1,0 +1,6 @@
+C:\Users\nomar\SignalRChatServer\obj\Debug\net7.0\SignalRChatServer.csproj.AssemblyReference.cache
+C:\Users\nomar\SignalRChatServer\obj\Debug\net7.0\SignalRChatServer.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\nomar\SignalRChatServer\obj\Debug\net7.0\SignalRChatServer.AssemblyInfoInputs.cache
+C:\Users\nomar\SignalRChatServer\obj\Debug\net7.0\SignalRChatServer.AssemblyInfo.cs
+C:\Users\nomar\SignalRChatServer\obj\Debug\net7.0\SignalRChatServer.csproj.CoreCompileInputs.cache
+C:\Users\nomar\SignalRChatServer\obj\Debug\net7.0\SignalRChatServer.MvcApplicationPartsAssemblyInfo.cache
