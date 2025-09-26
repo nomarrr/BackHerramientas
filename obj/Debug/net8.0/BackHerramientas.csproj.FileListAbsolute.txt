@@ -112,3 +112,4 @@ C:\Users\nomar\OneDrive\Documentos\GitHub\BackHerramientas\obj\Debug\net8.0\refi
 C:\Users\nomar\OneDrive\Documentos\GitHub\BackHerramientas\obj\Debug\net8.0\BackHerramientas.pdb
 C:\Users\nomar\OneDrive\Documentos\GitHub\BackHerramientas\obj\Debug\net8.0\BackHerramientas.genruntimeconfig.cache
 C:\Users\nomar\OneDrive\Documentos\GitHub\BackHerramientas\obj\Debug\net8.0\ref\BackHerramientas.dll
+C:\Users\nomar\OneDrive\Documentos\GitHub\BackHerramientas\obj\Debug\net8.0\BackHerramientas.sourcelink.json
