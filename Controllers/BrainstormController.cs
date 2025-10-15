@@ -17,38 +17,33 @@ public class BrainstormController : ControllerBase
         _logger = logger;
     }
 
-    [HttpGet("ideas/{idProy}")]
-    public IActionResult GetIdeas(int idProy)
+    // Obtener todas las sesiones de brainstorm
+    [HttpGet]
+    public IActionResult GetAllBrainstorms()
     {
-        var response = new BrainstormResponse
-        {
-            ideas = new List<BrainstormIdea>()
-        };
+        var response = new BrainstormSessionsResponse();
 
         using (SqlConnection conn = new SqlConnection(_connectionString))
         {
             try
             {
                 conn.Open();
-                string query = @"SELECT Id, IdProy, IdUsuario, Idea, Nombre
-                               FROM Brainstorm 
-                               WHERE IdProy = @IdProy";
+                string query = "SELECT Id, IdProy, Titulo, Descripcion, MinIdeas, MaxIdeas FROM Brainstorm";
 
                 using (SqlCommand cmd = new SqlCommand(query, conn))
                 {
-                    cmd.Parameters.AddWithValue("@IdProy", idProy);
-
                     using (SqlDataReader reader = cmd.ExecuteReader())
                     {
                         while (reader.Read())
                         {
-                            response.ideas.Add(new BrainstormIdea
+                            response.sessions.Add(new BrainstormSession
                             {
                                 Id = (int)reader["Id"],
                                 IdProy = (int)reader["IdProy"],
-                                IdUsuario = (int)reader["IdUsuario"],
-                                Idea = reader["Idea"].ToString(),
-                                Nombre = reader["Nombre"].ToString()
+                                Titulo = reader["Titulo"].ToString(),
+                                Descripcion = reader["Descripcion"].ToString(),
+                                MinIdeas = (int)reader["MinIdeas"],
+                                MaxIdeas = (int)reader["MaxIdeas"]
                             });
                         }
                     }
@@ -58,45 +53,86 @@ public class BrainstormController : ControllerBase
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error al obtener ideas");
+                _logger.LogError(ex, "Error al obtener sesiones de brainstorm");
                 return StatusCode(500, new { error = ex.Message });
             }
         }
     }
 
-    [HttpGet("ideas/{idProy}/{idUsuario}")]
-    public IActionResult GetIdeasPorUsuario(int idProy, int idUsuario)
+    // Obtener sesión de brainstorm por ID
+    [HttpGet("{id}")]
+    public IActionResult GetBrainstormById(int id)
     {
-        var response = new BrainstormResponse
+        using (SqlConnection conn = new SqlConnection(_connectionString))
         {
-            ideas = new List<BrainstormIdea>()
-        };
+            try
+            {
+                conn.Open();
+                string query = "SELECT Id, IdProy, Titulo, Descripcion, MinIdeas, MaxIdeas FROM Brainstorm WHERE Id = @Id";
+
+                using (SqlCommand cmd = new SqlCommand(query, conn))
+                {
+                    cmd.Parameters.AddWithValue("@Id", id);
+
+                    using (SqlDataReader reader = cmd.ExecuteReader())
+                    {
+                        if (reader.Read())
+                        {
+                            var session = new BrainstormSession
+                            {
+                                Id = (int)reader["Id"],
+                                IdProy = (int)reader["IdProy"],
+                                Titulo = reader["Titulo"].ToString(),
+                                Descripcion = reader["Descripcion"].ToString(),
+                                MinIdeas = (int)reader["MinIdeas"],
+                                MaxIdeas = (int)reader["MaxIdeas"]
+                            };
+                            return Ok(session);
+                        }
+                        else
+                        {
+                            return NotFound(new { error = $"No se encontró la sesión de brainstorm con ID {id}" });
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error al obtener sesión de brainstorm por ID: {Id}", id);
+                return StatusCode(500, new { error = ex.Message });
+            }
+        }
+    }
+
+    // Obtener sesiones de brainstorm por proyecto
+    [HttpGet("byproy/{idProy}")]
+    public IActionResult GetBrainstormsByProy(int idProy)
+    {
+        var response = new BrainstormSessionsResponse();
 
         using (SqlConnection conn = new SqlConnection(_connectionString))
         {
             try
             {
                 conn.Open();
-                string query = @"SELECT Id, IdProy, IdUsuario, Idea, Nombre
-                             FROM Brainstorm
-                             WHERE IdProy = @IdProy AND IdUsuario = @IdUsuario";
+                string query = "SELECT Id, IdProy, Titulo, Descripcion, MinIdeas, MaxIdeas FROM Brainstorm WHERE IdProy = @IdProy";
 
                 using (SqlCommand cmd = new SqlCommand(query, conn))
                 {
                     cmd.Parameters.AddWithValue("@IdProy", idProy);
-                    cmd.Parameters.AddWithValue("@IdUsuario", idUsuario);
 
                     using (SqlDataReader reader = cmd.ExecuteReader())
                     {
                         while (reader.Read())
                         {
-                            response.ideas.Add(new BrainstormIdea
+                            response.sessions.Add(new BrainstormSession
                             {
                                 Id = (int)reader["Id"],
                                 IdProy = (int)reader["IdProy"],
-                                IdUsuario = (int)reader["IdUsuario"],
-                                Idea = reader["Idea"].ToString(),
-                                Nombre = reader["Nombre"].ToString()
+                                Titulo = reader["Titulo"].ToString(),
+                                Descripcion = reader["Descripcion"].ToString(),
+                                MinIdeas = (int)reader["MinIdeas"],
+                                MaxIdeas = (int)reader["MaxIdeas"]
                             });
                         }
                     }
@@ -106,83 +142,109 @@ public class BrainstormController : ControllerBase
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error al obtener ideas por usuario");
+                _logger.LogError(ex, "Error al obtener sesiones de brainstorm por proyecto: {IdProy}", idProy);
                 return StatusCode(500, new { error = ex.Message });
             }
         }
     }
 
-    [HttpPost("agregar")]
-    public IActionResult AgregarIdea([FromBody] BrainstormRequest request)
+    // Crear nueva sesión de brainstorm
+    [HttpPost]
+    public IActionResult CreateBrainstorm([FromBody] BrainstormSessionRequest request)
     {
         try
         {
-            _logger.LogInformation("Iniciando AgregarIdea con request: {@Request}", request);
-
             if (request == null)
             {
-                _logger.LogWarning("Request es null");
                 return BadRequest(new { error = "La solicitud no puede estar vacía" });
             }
 
-            if (string.IsNullOrEmpty(request.Idea))
+            if (string.IsNullOrEmpty(request.Titulo))
             {
-                _logger.LogWarning("Campo Idea está vacío");
-                return BadRequest(new { error = "El campo Idea es requerido" });
+                return BadRequest(new { error = "El título es requerido" });
             }
 
-            if (string.IsNullOrEmpty(request.Nombre))
+            if (string.IsNullOrEmpty(request.Descripcion))
             {
-                _logger.LogWarning("Campo Nombre está vacío");
-                return BadRequest(new { error = "El campo Nombre es requerido" });
-            }
-
-            if (request.Nombre.Length > 20)
-            {
-                _logger.LogWarning("Nombre excede 20 caracteres: {Nombre}", request.Nombre);
-                return BadRequest(new { error = "El nombre no puede exceder los 20 caracteres" });
+                return BadRequest(new { error = "La descripción es requerida" });
             }
 
             using (SqlConnection conn = new SqlConnection(_connectionString))
             {
-                _logger.LogInformation("Intentando abrir conexión a la base de datos");
                 conn.Open();
-                
-                string query = @"INSERT INTO Brainstorm (IdProy, IdUsuario, Idea, Nombre) 
-                               VALUES (@IdProy, @IdUsuario, @Idea, @Nombre);
+                string query = @"INSERT INTO Brainstorm (IdProy, Titulo, Descripcion, MinIdeas, MaxIdeas) 
+                               VALUES (@IdProy, @Titulo, @Descripcion, @MinIdeas, @MaxIdeas);
                                SELECT SCOPE_IDENTITY();";
 
                 using (SqlCommand cmd = new SqlCommand(query, conn))
                 {
-                    _logger.LogInformation("Configurando parámetros: IdProy={IdProy}, IdUsuario={IdUsuario}, Idea={Idea}, Nombre={Nombre}", 
-                        request.IdProy, request.IdUsuario, request.Idea, request.Nombre);
-
                     cmd.Parameters.AddWithValue("@IdProy", request.IdProy);
-                    cmd.Parameters.AddWithValue("@IdUsuario", request.IdUsuario);
-                    cmd.Parameters.AddWithValue("@Idea", request.Idea);
-                    cmd.Parameters.AddWithValue("@Nombre", request.Nombre);
+                    cmd.Parameters.AddWithValue("@Titulo", request.Titulo);
+                    cmd.Parameters.AddWithValue("@Descripcion", request.Descripcion);
+                    cmd.Parameters.AddWithValue("@MinIdeas", request.MinIdeas);
+                    cmd.Parameters.AddWithValue("@MaxIdeas", request.MaxIdeas);
 
-                    _logger.LogInformation("Ejecutando comando SQL");
                     int newId = Convert.ToInt32(cmd.ExecuteScalar());
-                    _logger.LogInformation("Idea agregada exitosamente con ID: {Id}", newId);
-                    return Ok(new { message = "Idea agregada correctamente", id = newId });
+                    return Ok(new { message = "Sesión de brainstorm creada correctamente", id = newId });
                 }
             }
         }
-        catch (SqlException ex)
-        {
-            _logger.LogError(ex, "Error de SQL al agregar idea");
-            return StatusCode(500, new { error = "Error de base de datos: " + ex.Message });
-        }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error inesperado al agregar idea");
-            return StatusCode(500, new { error = "Error al agregar la idea: " + ex.Message });
+            _logger.LogError(ex, "Error al crear sesión de brainstorm");
+            return StatusCode(500, new { error = ex.Message });
         }
     }
 
-    [HttpDelete("eliminar/{id}")]
-    public IActionResult EliminarIdea(int id)
+    // Actualizar sesión de brainstorm
+    [HttpPut("{id}")]
+    public IActionResult UpdateBrainstorm(int id, [FromBody] BrainstormSessionRequest request)
+    {
+        try
+        {
+            if (request == null)
+            {
+                return BadRequest(new { error = "La solicitud no puede estar vacía" });
+            }
+
+            using (SqlConnection conn = new SqlConnection(_connectionString))
+            {
+                conn.Open();
+                string query = @"UPDATE Brainstorm
+                               SET IdProy = @IdProy, Titulo = @Titulo, Descripcion = @Descripcion, 
+                                   MinIdeas = @MinIdeas, MaxIdeas = @MaxIdeas
+                               WHERE Id = @Id";
+
+                using (SqlCommand cmd = new SqlCommand(query, conn))
+                {
+                    cmd.Parameters.AddWithValue("@Id", id);
+                    cmd.Parameters.AddWithValue("@IdProy", request.IdProy);
+                    cmd.Parameters.AddWithValue("@Titulo", request.Titulo ?? (object)DBNull.Value);
+                    cmd.Parameters.AddWithValue("@Descripcion", request.Descripcion ?? (object)DBNull.Value);
+                    cmd.Parameters.AddWithValue("@MinIdeas", request.MinIdeas);
+                    cmd.Parameters.AddWithValue("@MaxIdeas", request.MaxIdeas);
+
+                    int rowsAffected = cmd.ExecuteNonQuery();
+
+                    if (rowsAffected == 0)
+                    {
+                        return NotFound(new { error = $"No se encontró la sesión de brainstorm con ID {id}" });
+                    }
+
+                    return Ok(new { message = "Sesión de brainstorm actualizada correctamente" });
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error al actualizar sesión de brainstorm con ID: {Id}", id);
+            return StatusCode(500, new { error = ex.Message });
+        }
+    }
+
+    // Eliminar sesión de brainstorm
+    [HttpDelete("{id}")]
+    public IActionResult DeleteBrainstorm(int id)
     {
         using (SqlConnection conn = new SqlConnection(_connectionString))
         {
@@ -194,107 +256,153 @@ public class BrainstormController : ControllerBase
                 using (SqlCommand cmd = new SqlCommand(query, conn))
                 {
                     cmd.Parameters.AddWithValue("@Id", id);
-                    cmd.ExecuteNonQuery();
-                }
+                    int rowsAffected = cmd.ExecuteNonQuery();
 
-                return Ok(new { message = "Idea eliminada correctamente" });
+                    if (rowsAffected == 0)
+                    {
+                        return NotFound(new { error = $"No se encontró la sesión de brainstorm con ID {id}" });
+                    }
+
+                    return Ok(new { message = "Sesión de brainstorm eliminada correctamente" });
+                }
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error al eliminar idea");
+                _logger.LogError(ex, "Error al eliminar sesión de brainstorm con ID: {Id}", id);
                 return StatusCode(500, new { error = ex.Message });
             }
         }
     }
 
-    [HttpPut("editar/{id}")]
-    public IActionResult EditarIdea(int id, [FromBody] BrainstormRequest request)
+    // Obtener ideas de una sesión de brainstorm
+    [HttpGet("{idBrainstorm}/ideas")]
+    public IActionResult GetIdeas(int idBrainstorm)
     {
-        try
+        var response = new BrainstormIdeasResponse();
+
+        using (SqlConnection conn = new SqlConnection(_connectionString))
         {
-            _logger.LogInformation("Iniciando EditarIdea para ID: {Id} con request: {@Request}", id, request);
-
-            if (request == null)
+            try
             {
-                _logger.LogWarning("Request para editar es null");
-                return BadRequest(new { error = "La solicitud no puede estar vacía" });
-            }
-
-            // Opcional: Validar si los campos a editar son nulos o vacíos si no se permite editarlos a vacío
-            // if (string.IsNullOrEmpty(request.Idea) && string.IsNullOrEmpty(request.Nombre))
-            // {
-            //     return BadRequest(new { error = "Se requiere al menos el campo Idea o Nombre para editar" });
-            // }
-
-            if (request.Nombre != null && request.Nombre.Length > 20)
-            {
-                _logger.LogWarning("Nombre excede 20 caracteres en edición: {Nombre}", request.Nombre);
-                return BadRequest(new { error = "El nombre no puede exceder los 20 caracteres" });
-            }
-
-
-            using (SqlConnection conn = new SqlConnection(_connectionString))
-            {
-                _logger.LogInformation("Intentando abrir conexión a la base de datos para editar");
                 conn.Open();
-
-                // Construir la consulta de UPDATE dinámicamente si solo queremos actualizar los campos que vienen en el request
-                // O actualizar todos los campos Idea y Nombre que vienen en el request
-                string query = @"UPDATE Brainstorm
-                               SET Idea = @Idea, Nombre = @Nombre
-                               WHERE Id = @Id";
+                string query = @"SELECT ib.IdBrainstorm, ib.IdUsuario, ib.Idea, u.Nombre
+                               FROM Ideas_brainstorm ib
+                               INNER JOIN Usuarios u ON ib.IdUsuario = u.Id
+                               WHERE ib.IdBrainstorm = @IdBrainstorm";
 
                 using (SqlCommand cmd = new SqlCommand(query, conn))
                 {
-                    cmd.Parameters.AddWithValue("@Id", id);
-                    cmd.Parameters.AddWithValue("@Idea", request.Idea ?? (object)DBNull.Value); // Manejar posibles nulos si la columna lo permite
-                    cmd.Parameters.AddWithValue("@Nombre", request.Nombre ?? (object)DBNull.Value); // Manejar posibles nulos si la columna lo permite
+                    cmd.Parameters.AddWithValue("@IdBrainstorm", idBrainstorm);
 
-                    _logger.LogInformation("Ejecutando comando SQL para editar ID: {Id}", id);
-                    int rowsAffected = cmd.ExecuteNonQuery();
-
-                    if (rowsAffected == 0)
+                    using (SqlDataReader reader = cmd.ExecuteReader())
                     {
-                        _logger.LogWarning("No se encontró idea con ID: {Id} para editar", id);
-                        return NotFound(new { error = $"No se encontró la idea con ID {id}" });
+                        while (reader.Read())
+                        {
+                            response.ideas.Add(new BrainstormIdea
+                            {
+                                IdBrainstorm = (int)reader["IdBrainstorm"],
+                                IdUsuario = (int)reader["IdUsuario"],
+                                Idea = reader["Idea"].ToString(),
+                                NombreUsuario = reader["Nombre"].ToString()
+                            });
+                        }
                     }
+                }
 
-                    _logger.LogInformation("Idea con ID: {Id} editada correctamente. Filas afectadas: {RowsAffected}", id, rowsAffected);
-                    return Ok(new { message = "Idea editada correctamente" });
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error al obtener ideas de brainstorm");
+                return StatusCode(500, new { error = ex.Message });
+            }
+        }
+    }
+
+    // Agregar idea a una sesión de brainstorm
+    [HttpPost("{idBrainstorm}/ideas")]
+    public IActionResult AddIdea(int idBrainstorm, [FromBody] BrainstormIdeaRequest request)
+    {
+        try
+        {
+            if (request == null)
+            {
+                return BadRequest(new { error = "La solicitud no puede estar vacía" });
+            }
+
+            if (string.IsNullOrEmpty(request.Idea))
+            {
+                return BadRequest(new { error = "La idea es requerida" });
+            }
+
+            using (SqlConnection conn = new SqlConnection(_connectionString))
+            {
+                conn.Open();
+                string query = @"INSERT INTO Ideas_brainstorm (IdBrainstorm, IdUsuario, Idea) 
+                               VALUES (@IdBrainstorm, @IdUsuario, @Idea);
+                               SELECT SCOPE_IDENTITY();";
+
+                using (SqlCommand cmd = new SqlCommand(query, conn))
+                {
+                    cmd.Parameters.AddWithValue("@IdBrainstorm", idBrainstorm);
+                    cmd.Parameters.AddWithValue("@IdUsuario", request.IdUsuario);
+                    cmd.Parameters.AddWithValue("@Idea", request.Idea);
+
+                    int newId = Convert.ToInt32(cmd.ExecuteScalar());
+                    return Ok(new { message = "Idea agregada correctamente", id = newId });
                 }
             }
         }
-        catch (SqlException ex)
-        {
-            _logger.LogError(ex, "Error de SQL al editar idea con ID: {Id}", id);
-            return StatusCode(500, new { error = "Error de base de datos: " + ex.Message });
-        }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error inesperado al editar idea con ID: {Id}", id);
-            return StatusCode(500, new { error = "Error al editar la idea: " + ex.Message });
+            _logger.LogError(ex, "Error al agregar idea");
+            return StatusCode(500, new { error = ex.Message });
         }
     }
 }
 
-public class BrainstormRequest
-{
-    public int IdProy { get; set; }
-    public int IdUsuario { get; set; }
-    public string Idea { get; set; }
-    public string Nombre { get; set; }
-}
-
-public class BrainstormResponse
-{
-    public List<BrainstormIdea> ideas { get; set; }
-}
-
-public class BrainstormIdea
+// Clases para sesiones de brainstorm
+public class BrainstormSession
 {
     public int Id { get; set; }
     public int IdProy { get; set; }
+    public string Titulo { get; set; }
+    public string Descripcion { get; set; }
+    public int MinIdeas { get; set; }
+    public int MaxIdeas { get; set; }
+}
+
+public class BrainstormSessionRequest
+{
+    public int IdProy { get; set; }
+    public string Titulo { get; set; }
+    public string Descripcion { get; set; }
+    public int MinIdeas { get; set; }
+    public int MaxIdeas { get; set; }
+}
+
+public class BrainstormSessionsResponse
+{
+    public List<BrainstormSession> sessions { get; set; } = new List<BrainstormSession>();
+}
+
+// Clases para ideas de brainstorm
+public class BrainstormIdea
+{
+    public int IdBrainstorm { get; set; }
     public int IdUsuario { get; set; }
     public string Idea { get; set; }
-    public string Nombre { get; set; }
+    public string NombreUsuario { get; set; }
+}
+
+public class BrainstormIdeaRequest
+{
+    public int IdUsuario { get; set; }
+    public string Idea { get; set; }
+}
+
+public class BrainstormIdeasResponse
+{
+    public List<BrainstormIdea> ideas { get; set; } = new List<BrainstormIdea>();
+} 
 } 
