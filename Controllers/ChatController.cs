@@ -16,7 +16,7 @@ public class ChatController : ControllerBase
 
     public ChatController(IHubContext<ChatHub> hubContext, IConfiguration configuration, ILogger<ChatController> logger)
     {
-        _connectionString = @"Data Source=LAPTOP-7MITNTQF\SQLEXPRESS;Initial Catalog=Herramientas;User ID=sa;Password=admin;Encrypt=True;TrustServerCertificate=True";
+        _connectionString = @"Data Source=LAPTOP-7MITNTQF\SQLEXPRESS;Initial Catalog=HerramientasV2;User ID=sa;Password=admin;Encrypt=True;TrustServerCertificate=True";
         _hubContext = hubContext;
         _logger = logger;
     }
