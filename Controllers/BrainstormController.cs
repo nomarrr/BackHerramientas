@@ -274,6 +274,101 @@ public class BrainstormController : ControllerBase
         }
     }
 
+    // Obtener todas las ideas de un proyecto (nuevo endpoint para el frontend)
+    [HttpGet("byproy/{idProy}/ideas")]
+    public IActionResult GetIdeasByProy(int idProy)
+    {
+        var response = new BrainstormIdeasResponse();
+
+        using (SqlConnection conn = new SqlConnection(_connectionString))
+        {
+            try
+            {
+                conn.Open();
+                string query = @"SELECT ib.Id, ib.IdBrainstorm, ib.IdUsuario, ib.Idea, u.Nombre
+                               FROM Ideas_brainstorm ib
+                               INNER JOIN Brainstorm b ON ib.IdBrainstorm = b.Id
+                               INNER JOIN Usuarios u ON ib.IdUsuario = u.Id
+                               WHERE b.IdProy = @IdProy";
+
+                using (SqlCommand cmd = new SqlCommand(query, conn))
+                {
+                    cmd.Parameters.AddWithValue("@IdProy", idProy);
+
+                    using (SqlDataReader reader = cmd.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            response.ideas.Add(new BrainstormIdea
+                            {
+                                Id = (int)reader["Id"],
+                                IdBrainstorm = (int)reader["IdBrainstorm"],
+                                IdUsuario = (int)reader["IdUsuario"],
+                                Idea = reader["Idea"].ToString(),
+                                NombreUsuario = reader["Nombre"].ToString()
+                            });
+                        }
+                    }
+                }
+
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error al obtener ideas por proyecto: {IdProy}", idProy);
+                return StatusCode(500, new { error = ex.Message });
+            }
+        }
+    }
+
+    // Obtener ideas de un usuario específico en un proyecto
+    [HttpGet("byproy/{idProy}/usuario/{idUsuario}/ideas")]
+    public IActionResult GetIdeasByUsuario(int idProy, int idUsuario)
+    {
+        var response = new BrainstormIdeasResponse();
+
+        using (SqlConnection conn = new SqlConnection(_connectionString))
+        {
+            try
+            {
+                conn.Open();
+                string query = @"SELECT ib.Id, ib.IdBrainstorm, ib.IdUsuario, ib.Idea, u.Nombre
+                               FROM Ideas_brainstorm ib
+                               INNER JOIN Usuarios u ON ib.IdUsuario = u.Id
+                               INNER JOIN Brainstorm b ON ib.IdBrainstorm = b.Id
+                               WHERE b.IdProy = @IdProy AND ib.IdUsuario = @IdUsuario";
+
+                using (SqlCommand cmd = new SqlCommand(query, conn))
+                {
+                    cmd.Parameters.AddWithValue("@IdProy", idProy);
+                    cmd.Parameters.AddWithValue("@IdUsuario", idUsuario);
+
+                    using (SqlDataReader reader = cmd.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            response.ideas.Add(new BrainstormIdea
+                            {
+                                Id = (int)reader["Id"],
+                                IdBrainstorm = (int)reader["IdBrainstorm"],
+                                IdUsuario = (int)reader["IdUsuario"],
+                                Idea = reader["Idea"].ToString(),
+                                NombreUsuario = reader["Nombre"].ToString()
+                            });
+                        }
+                    }
+                }
+
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error al obtener ideas del usuario {IdUsuario} en proyecto {IdProy}", idUsuario, idProy);
+                return StatusCode(500, new { error = ex.Message });
+            }
+        }
+    }
+
     // Obtener ideas de una sesión de brainstorm
     [HttpGet("{idBrainstorm}/ideas")]
     public IActionResult GetIdeas(int idBrainstorm)
@@ -285,7 +380,7 @@ public class BrainstormController : ControllerBase
             try
             {
                 conn.Open();
-                string query = @"SELECT ib.IdBrainstorm, ib.IdUsuario, ib.Idea, u.Nombre
+                string query = @"SELECT ib.Id, ib.IdBrainstorm, ib.IdUsuario, ib.Idea, u.Nombre
                                FROM Ideas_brainstorm ib
                                INNER JOIN Usuarios u ON ib.IdUsuario = u.Id
                                WHERE ib.IdBrainstorm = @IdBrainstorm";
@@ -300,6 +395,7 @@ public class BrainstormController : ControllerBase
                         {
                             response.ideas.Add(new BrainstormIdea
                             {
+                                Id = (int)reader["Id"],
                                 IdBrainstorm = (int)reader["IdBrainstorm"],
                                 IdUsuario = (int)reader["IdUsuario"],
                                 Idea = reader["Idea"].ToString(),
@@ -339,8 +435,7 @@ public class BrainstormController : ControllerBase
             {
                 conn.Open();
                 string query = @"INSERT INTO Ideas_brainstorm (IdBrainstorm, IdUsuario, Idea) 
-                               VALUES (@IdBrainstorm, @IdUsuario, @Idea);
-                               SELECT SCOPE_IDENTITY();";
+                               VALUES (@IdBrainstorm, @IdUsuario, @Idea)";
 
                 using (SqlCommand cmd = new SqlCommand(query, conn))
                 {
@@ -348,14 +443,339 @@ public class BrainstormController : ControllerBase
                     cmd.Parameters.AddWithValue("@IdUsuario", request.IdUsuario);
                     cmd.Parameters.AddWithValue("@Idea", request.Idea);
 
-                    int newId = Convert.ToInt32(cmd.ExecuteScalar());
-                    return Ok(new { message = "Idea agregada correctamente", id = newId });
+                    int rowsAffected = cmd.ExecuteNonQuery();
+                    
+                    if (rowsAffected == 0)
+                    {
+                        return StatusCode(500, new { error = "No se pudo insertar la idea" });
+                    }
+                }
+
+                // Ahora obtener la idea completa con los datos del usuario
+                string selectQuery = @"SELECT ib.Id, ib.IdBrainstorm, ib.IdUsuario, ib.Idea, ISNULL(u.Nombre, 'Usuario') as Nombre
+                                     FROM Ideas_brainstorm ib
+                                     LEFT JOIN Usuarios u ON ib.IdUsuario = u.Id
+                                     WHERE ib.IdBrainstorm = @IdBrainstorm AND ib.IdUsuario = @IdUsuario AND CAST(ib.Idea AS NVARCHAR(MAX)) = @Idea";
+
+                using (SqlCommand selectCmd = new SqlCommand(selectQuery, conn))
+                {
+                    selectCmd.Parameters.AddWithValue("@IdBrainstorm", idBrainstorm);
+                    selectCmd.Parameters.AddWithValue("@IdUsuario", request.IdUsuario);
+                    selectCmd.Parameters.AddWithValue("@Idea", request.Idea);
+                    
+                    using (SqlDataReader reader = selectCmd.ExecuteReader())
+                    {
+                        if (reader.Read())
+                        {
+                            var idea = new BrainstormIdea
+                            {
+                                Id = (int)reader["Id"],
+                                IdBrainstorm = reader["IdBrainstorm"] != DBNull.Value ? (int)reader["IdBrainstorm"] : idBrainstorm,
+                                IdUsuario = reader["IdUsuario"] != DBNull.Value ? (int)reader["IdUsuario"] : request.IdUsuario,
+                                Idea = reader["Idea"] != DBNull.Value ? reader["Idea"].ToString() : request.Idea,
+                                NombreUsuario = reader["Nombre"] != DBNull.Value ? reader["Nombre"].ToString() : "Usuario"
+                            };
+                            
+                            return Ok(new { message = "Idea agregada correctamente", idea = idea });
+                        }
+                        else
+                        {
+                            return StatusCode(500, new { error = "No se pudo recuperar la idea después de crearla" });
+                        }
+                    }
                 }
             }
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error al agregar idea");
+            return StatusCode(500, new { error = ex.Message });
+        }
+    }
+
+    // Editar idea de una sesión de brainstorm
+    [HttpPut("{idBrainstorm}/ideas")]
+    public IActionResult UpdateIdea(int idBrainstorm, [FromBody] BrainstormIdeaUpdateRequest request)
+    {
+        try
+        {
+            if (request == null)
+            {
+                return BadRequest(new { error = "La solicitud no puede estar vacía" });
+            }
+
+            if (string.IsNullOrEmpty(request.Idea))
+            {
+                return BadRequest(new { error = "La idea es requerida" });
+            }
+
+            using (SqlConnection conn = new SqlConnection(_connectionString))
+            {
+                conn.Open();
+                string query = @"UPDATE Ideas_brainstorm 
+                               SET Idea = @Idea 
+                               WHERE IdBrainstorm = @IdBrainstorm AND IdUsuario = @IdUsuario AND CAST(Idea AS NVARCHAR(MAX)) = @IdeaOriginal";
+
+                using (SqlCommand cmd = new SqlCommand(query, conn))
+                {
+                    cmd.Parameters.AddWithValue("@IdBrainstorm", idBrainstorm);
+                    cmd.Parameters.AddWithValue("@IdUsuario", request.IdUsuario);
+                    cmd.Parameters.AddWithValue("@Idea", request.Idea);
+                    cmd.Parameters.AddWithValue("@IdeaOriginal", request.IdeaOriginal);
+
+                    int rowsAffected = cmd.ExecuteNonQuery();
+                    
+                    if (rowsAffected == 0)
+                    {
+                        return NotFound(new { error = "No se encontró la idea para editar" });
+                    }
+                }
+
+                // Obtener la idea actualizada
+                string selectQuery = @"SELECT ib.IdBrainstorm, ib.IdUsuario, ib.Idea, ISNULL(u.Nombre, 'Usuario') as Nombre
+                                     FROM Ideas_brainstorm ib
+                                     LEFT JOIN Usuarios u ON ib.IdUsuario = u.Id
+                                     WHERE ib.IdBrainstorm = @IdBrainstorm AND ib.IdUsuario = @IdUsuario AND CAST(ib.Idea AS NVARCHAR(MAX)) = @Idea";
+
+                using (SqlCommand selectCmd = new SqlCommand(selectQuery, conn))
+                {
+                    selectCmd.Parameters.AddWithValue("@IdBrainstorm", idBrainstorm);
+                    selectCmd.Parameters.AddWithValue("@IdUsuario", request.IdUsuario);
+                    selectCmd.Parameters.AddWithValue("@Idea", request.Idea);
+                    
+                    using (SqlDataReader reader = selectCmd.ExecuteReader())
+                    {
+                        if (reader.Read())
+                        {
+                            var idea = new BrainstormIdea
+                            {
+                                IdBrainstorm = reader["IdBrainstorm"] != DBNull.Value ? (int)reader["IdBrainstorm"] : idBrainstorm,
+                                IdUsuario = reader["IdUsuario"] != DBNull.Value ? (int)reader["IdUsuario"] : request.IdUsuario,
+                                Idea = reader["Idea"] != DBNull.Value ? reader["Idea"].ToString() : request.Idea,
+                                NombreUsuario = reader["Nombre"] != DBNull.Value ? reader["Nombre"].ToString() : "Usuario"
+                            };
+                            
+                            return Ok(new { message = "Idea actualizada correctamente", idea = idea });
+                        }
+                        else
+                        {
+                            return StatusCode(500, new { error = "No se pudo recuperar la idea después de actualizarla" });
+                        }
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error al actualizar idea");
+            return StatusCode(500, new { error = ex.Message });
+        }
+    }
+
+    // Eliminar idea de una sesión de brainstorm
+    [HttpDelete("{idBrainstorm}/ideas")]
+    public IActionResult DeleteIdea(int idBrainstorm, [FromBody] BrainstormIdeaDeleteRequest request)
+    {
+        try
+        {
+            if (request == null)
+            {
+                return BadRequest(new { error = "La solicitud no puede estar vacía" });
+            }
+
+            using (SqlConnection conn = new SqlConnection(_connectionString))
+            {
+                conn.Open();
+                string query = @"DELETE FROM Ideas_brainstorm 
+                               WHERE IdBrainstorm = @IdBrainstorm AND IdUsuario = @IdUsuario AND CAST(Idea AS NVARCHAR(MAX)) = @Idea";
+
+                using (SqlCommand cmd = new SqlCommand(query, conn))
+                {
+                    cmd.Parameters.AddWithValue("@IdBrainstorm", idBrainstorm);
+                    cmd.Parameters.AddWithValue("@IdUsuario", request.IdUsuario);
+                    cmd.Parameters.AddWithValue("@Idea", request.Idea);
+
+                    int rowsAffected = cmd.ExecuteNonQuery();
+                    
+                    if (rowsAffected == 0)
+                    {
+                        return NotFound(new { error = "No se encontró la idea para eliminar" });
+                    }
+
+                    return Ok(new { message = "Idea eliminada correctamente" });
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error al eliminar idea");
+            return StatusCode(500, new { error = ex.Message });
+        }
+    }
+
+    // Editar idea individual por ID
+    [HttpPut("ideas/{id}")]
+    public IActionResult EditIdeaById(int id, [FromBody] BrainstormIdeaEditRequest request)
+    {
+        try
+        {
+            if (request == null)
+            {
+                return BadRequest(new { error = "La solicitud no puede estar vacía" });
+            }
+
+            if (string.IsNullOrEmpty(request.Idea))
+            {
+                return BadRequest(new { error = "La idea es requerida" });
+            }
+
+            using (SqlConnection conn = new SqlConnection(_connectionString))
+            {
+                conn.Open();
+                
+                // Verificar que la idea existe y pertenece al usuario
+                string checkQuery = @"SELECT ib.Id, ib.IdBrainstorm, ib.IdUsuario, ib.Idea, u.Nombre
+                                    FROM Ideas_brainstorm ib
+                                    LEFT JOIN Usuarios u ON ib.IdUsuario = u.Id
+                                    WHERE ib.Id = @Id";
+
+                using (SqlCommand checkCmd = new SqlCommand(checkQuery, conn))
+                {
+                    checkCmd.Parameters.AddWithValue("@Id", id);
+                    
+                    using (SqlDataReader reader = checkCmd.ExecuteReader())
+                    {
+                        if (!reader.Read())
+                        {
+                            return NotFound(new { error = "No se encontró la idea con el ID especificado" });
+                        }
+                        
+                        // Verificar que el usuario es el propietario de la idea
+                        int ideaUserId = (int)reader["IdUsuario"];
+                        if (ideaUserId != request.IdUsuario)
+                        {
+                            return Forbid("No tienes permisos para editar esta idea");
+                        }
+                    }
+                }
+
+                // Actualizar la idea
+                string updateQuery = @"UPDATE Ideas_brainstorm 
+                                     SET Idea = @Idea 
+                                     WHERE Id = @Id";
+
+                using (SqlCommand cmd = new SqlCommand(updateQuery, conn))
+                {
+                    cmd.Parameters.AddWithValue("@Id", id);
+                    cmd.Parameters.AddWithValue("@Idea", request.Idea);
+
+                    int rowsAffected = cmd.ExecuteNonQuery();
+                    
+                    if (rowsAffected == 0)
+                    {
+                        return StatusCode(500, new { error = "No se pudo actualizar la idea" });
+                    }
+                }
+
+                // Obtener la idea actualizada
+                string selectQuery = @"SELECT ib.Id, ib.IdBrainstorm, ib.IdUsuario, ib.Idea, ISNULL(u.Nombre, 'Usuario') as Nombre
+                                     FROM Ideas_brainstorm ib
+                                     LEFT JOIN Usuarios u ON ib.IdUsuario = u.Id
+                                     WHERE ib.Id = @Id";
+
+                using (SqlCommand selectCmd = new SqlCommand(selectQuery, conn))
+                {
+                    selectCmd.Parameters.AddWithValue("@Id", id);
+                    
+                    using (SqlDataReader reader = selectCmd.ExecuteReader())
+                    {
+                        if (reader.Read())
+                        {
+                            var idea = new BrainstormIdea
+                            {
+                                Id = (int)reader["Id"],
+                                IdBrainstorm = (int)reader["IdBrainstorm"],
+                                IdUsuario = (int)reader["IdUsuario"],
+                                Idea = reader["Idea"].ToString(),
+                                NombreUsuario = reader["Nombre"].ToString()
+                            };
+                            
+                            return Ok(new { message = "Idea actualizada correctamente", idea = idea });
+                        }
+                        else
+                        {
+                            return StatusCode(500, new { error = "No se pudo recuperar la idea después de actualizarla" });
+                        }
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error al actualizar idea por ID: {Id}", id);
+            return StatusCode(500, new { error = ex.Message });
+        }
+    }
+
+    // Eliminar idea individual por ID
+    [HttpDelete("ideas/{id}")]
+    public IActionResult DeleteIdeaById(int id, [FromBody] BrainstormIdeaDeleteByIdRequest request)
+    {
+        try
+        {
+            if (request == null)
+            {
+                return BadRequest(new { error = "La solicitud no puede estar vacía" });
+            }
+
+            using (SqlConnection conn = new SqlConnection(_connectionString))
+            {
+                conn.Open();
+                
+                // Verificar que la idea existe y pertenece al usuario
+                string checkQuery = @"SELECT Id, IdUsuario FROM Ideas_brainstorm WHERE Id = @Id";
+
+                using (SqlCommand checkCmd = new SqlCommand(checkQuery, conn))
+                {
+                    checkCmd.Parameters.AddWithValue("@Id", id);
+                    
+                    using (SqlDataReader reader = checkCmd.ExecuteReader())
+                    {
+                        if (!reader.Read())
+                        {
+                            return NotFound(new { error = "No se encontró la idea con el ID especificado" });
+                        }
+                        
+                        // Verificar que el usuario es el propietario de la idea
+                        int ideaUserId = (int)reader["IdUsuario"];
+                        if (ideaUserId != request.IdUsuario)
+                        {
+                            return Forbid("No tienes permisos para eliminar esta idea");
+                        }
+                    }
+                }
+
+                // Eliminar la idea
+                string deleteQuery = @"DELETE FROM Ideas_brainstorm WHERE Id = @Id";
+
+                using (SqlCommand cmd = new SqlCommand(deleteQuery, conn))
+                {
+                    cmd.Parameters.AddWithValue("@Id", id);
+
+                    int rowsAffected = cmd.ExecuteNonQuery();
+                    
+                    if (rowsAffected == 0)
+                    {
+                        return StatusCode(500, new { error = "No se pudo eliminar la idea" });
+                    }
+
+                    return Ok(new { message = "Idea eliminada correctamente" });
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error al eliminar idea por ID: {Id}", id);
             return StatusCode(500, new { error = ex.Message });
         }
     }
@@ -389,6 +809,7 @@ public class BrainstormSessionsResponse
 // Clases para ideas de brainstorm
 public class BrainstormIdea
 {
+    public int Id { get; set; }
     public int IdBrainstorm { get; set; }
     public int IdUsuario { get; set; }
     public string Idea { get; set; }
@@ -401,7 +822,31 @@ public class BrainstormIdeaRequest
     public string Idea { get; set; }
 }
 
+public class BrainstormIdeaUpdateRequest
+{
+    public int IdUsuario { get; set; }
+    public string Idea { get; set; }
+    public string IdeaOriginal { get; set; }
+}
+
+public class BrainstormIdeaDeleteRequest
+{
+    public int IdUsuario { get; set; }
+    public string Idea { get; set; }
+}
+
 public class BrainstormIdeasResponse
 {
     public List<BrainstormIdea> ideas { get; set; } = new List<BrainstormIdea>();
+}
+
+public class BrainstormIdeaEditRequest
+{
+    public int IdUsuario { get; set; }
+    public string Idea { get; set; }
+}
+
+public class BrainstormIdeaDeleteByIdRequest
+{
+    public int IdUsuario { get; set; }
 } 
