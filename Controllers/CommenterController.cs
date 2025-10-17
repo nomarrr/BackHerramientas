@@ -296,6 +296,44 @@ public class CommenterController : ControllerBase
         }
     }
 
+    // Verificar si existe comentario de usuario en categoría
+    [HttpGet("check/{idUsuario}/{idCategoria}")]
+    public IActionResult CheckUserCommentInCategory(int idUsuario, int idCategoria)
+    {
+        using (SqlConnection conn = new SqlConnection(_connectionString))
+        {
+            try
+            {
+                conn.Open();
+                string query = @"SELECT COUNT(*) as CommentCount
+                               FROM Commenter 
+                               WHERE IdUsuario = @IdUsuario AND IdCategoria = @IdCategoria";
+
+                using (SqlCommand cmd = new SqlCommand(query, conn))
+                {
+                    cmd.Parameters.AddWithValue("@IdUsuario", idUsuario);
+                    cmd.Parameters.AddWithValue("@IdCategoria", idCategoria);
+
+                    int commentCount = (int)cmd.ExecuteScalar();
+                    bool hasComment = commentCount > 0;
+
+                    return Ok(new { 
+                        hasComment = hasComment,
+                        commentCount = commentCount,
+                        message = hasComment ? 
+                            $"El usuario {idUsuario} ya tiene {commentCount} comentario(s) en la categoría {idCategoria}" : 
+                            $"El usuario {idUsuario} no tiene comentarios en la categoría {idCategoria}"
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error al verificar comentario de usuario {IdUsuario} en categoría {IdCategoria}", idUsuario, idCategoria);
+                return StatusCode(500, new { error = ex.Message });
+            }
+        }
+    }
+
     // Eliminar comentario
     [HttpDelete("{id}")]
     public IActionResult DeleteComment(int id)
