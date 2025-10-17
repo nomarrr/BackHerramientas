@@ -122,17 +122,57 @@ public class ProyectoController : ControllerBase
             using (SqlConnection conn = new SqlConnection(_connectionString))
             {
                 conn.Open();
-                string query = @"INSERT INTO Proyecto (Nombre, Descripcion) 
-                               VALUES (@Nombre, @Descripcion);
-                               SELECT SCOPE_IDENTITY();";
-
-                using (SqlCommand cmd = new SqlCommand(query, conn))
+                
+                // Iniciar transacción para asegurar que tanto el proyecto como el categorizer se creen
+                using (var transaction = conn.BeginTransaction())
                 {
-                    cmd.Parameters.AddWithValue("@Nombre", request.Nombre);
-                    cmd.Parameters.AddWithValue("@Descripcion", request.Descripcion);
+                    try
+                    {
+                        // Crear el proyecto
+                        string queryProyecto = @"INSERT INTO Proyecto (Nombre, Descripcion) 
+                                               VALUES (@Nombre, @Descripcion);
+                                               SELECT SCOPE_IDENTITY();";
 
-                    int newId = Convert.ToInt32(cmd.ExecuteScalar());
-                    return Ok(new { message = "Proyecto creado correctamente", id = newId });
+                        int proyectoId;
+                        using (SqlCommand cmdProyecto = new SqlCommand(queryProyecto, conn, transaction))
+                        {
+                            cmdProyecto.Parameters.AddWithValue("@Nombre", request.Nombre);
+                            cmdProyecto.Parameters.AddWithValue("@Descripcion", request.Descripcion);
+
+                            proyectoId = Convert.ToInt32(cmdProyecto.ExecuteScalar());
+                        }
+
+                        // Crear automáticamente una sesión de categorizer para el proyecto con 1 fase
+                        string queryCategorizer = @"INSERT INTO Categorizer (IdProy, Fases) 
+                                                   VALUES (@IdProy, @Fases);
+                                                   SELECT SCOPE_IDENTITY();";
+
+                        int categorizerId;
+                        using (SqlCommand cmdCategorizer = new SqlCommand(queryCategorizer, conn, transaction))
+                        {
+                            cmdCategorizer.Parameters.AddWithValue("@IdProy", proyectoId);
+                            cmdCategorizer.Parameters.AddWithValue("@Fases", 1);
+
+                            categorizerId = Convert.ToInt32(cmdCategorizer.ExecuteScalar());
+                        }
+
+                        // Confirmar la transacción
+                        transaction.Commit();
+
+                        _logger.LogInformation("Proyecto creado exitosamente con ID: {ProyectoId} y Categorizer con ID: {CategorizerId}", proyectoId, categorizerId);
+
+                        return Ok(new { 
+                            message = "Proyecto creado correctamente con sesión de categorizer", 
+                            id = proyectoId,
+                            categorizerId = categorizerId
+                        });
+                    }
+                    catch (Exception ex)
+                    {
+                        // Si hay error, hacer rollback de la transacción
+                        transaction.Rollback();
+                        throw ex;
+                    }
                 }
             }
         }

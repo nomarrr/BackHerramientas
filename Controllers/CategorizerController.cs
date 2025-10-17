@@ -759,6 +759,130 @@ public class CategorizerController : ControllerBase
         }
     }
 
+    // Iniciar nueva fase de categorización
+    [HttpPost("{idCategorizer}/nueva-fase")]
+    public IActionResult IniciarNuevaFase(int idCategorizer)
+    {
+        try
+        {
+            _logger.LogInformation("=== Iniciando nueva fase de categorización ===");
+            _logger.LogInformation("IdCategorizer: {IdCategorizer}", idCategorizer);
+
+            using (SqlConnection conn = new SqlConnection(_connectionString))
+            {
+                conn.Open();
+                
+                // Iniciar transacción para asegurar consistencia
+                using (var transaction = conn.BeginTransaction())
+                {
+                    try
+                    {
+                        // Primero verificar que el IdCategorizer existe y obtener las fases actuales
+                        string checkQuery = "SELECT Fases FROM Categorizer WHERE Id = @IdCategorizer";
+                        int fasesActuales;
+                        using (SqlCommand checkCmd = new SqlCommand(checkQuery, conn, transaction))
+                        {
+                            checkCmd.Parameters.AddWithValue("@IdCategorizer", idCategorizer);
+                            var result = checkCmd.ExecuteScalar();
+                            
+                            if (result == null)
+                            {
+                                _logger.LogError("IdCategorizer {IdCategorizer} no existe", idCategorizer);
+                                return NotFound(new { error = $"No se encontró la sesión de categorizer con ID {idCategorizer}" });
+                            }
+                            
+                            fasesActuales = (int)result;
+                        }
+
+                        // Incrementar las fases en 1
+                        int nuevaFase = fasesActuales + 1;
+                        
+                        // Actualizar el campo Fases en la tabla Categorizer
+                        string updateQuery = "UPDATE Categorizer SET Fases = @NuevaFase WHERE Id = @IdCategorizer";
+                        using (SqlCommand updateCmd = new SqlCommand(updateQuery, conn, transaction))
+                        {
+                            updateCmd.Parameters.AddWithValue("@IdCategorizer", idCategorizer);
+                            updateCmd.Parameters.AddWithValue("@NuevaFase", nuevaFase);
+                            
+                            int rowsAffected = updateCmd.ExecuteNonQuery();
+                            if (rowsAffected == 0)
+                            {
+                                throw new Exception("No se pudo actualizar el número de fases");
+                            }
+                        }
+
+                        // Obtener todas las categorías de la fase anterior
+                        string getCategoriasQuery = @"SELECT Categoria, ListaIdeas 
+                                                    FROM Categorias_categorizer 
+                                                    WHERE IdCategorizer = @IdCategorizer AND Fase = @FaseAnterior";
+                        
+                        var categoriasAnteriores = new List<(string Categoria, string ListaIdeas)>();
+                        using (SqlCommand getCmd = new SqlCommand(getCategoriasQuery, conn, transaction))
+                        {
+                            getCmd.Parameters.AddWithValue("@IdCategorizer", idCategorizer);
+                            getCmd.Parameters.AddWithValue("@FaseAnterior", fasesActuales);
+                            
+                            using (SqlDataReader reader = getCmd.ExecuteReader())
+                            {
+                                while (reader.Read())
+                                {
+                                    categoriasAnteriores.Add((
+                                        reader["Categoria"].ToString(),
+                                        reader["ListaIdeas"].ToString()
+                                    ));
+                                }
+                            }
+                        }
+
+                        // Duplicar las categorías con la nueva fase
+                        string insertQuery = @"INSERT INTO Categorias_categorizer (IdCategorizer, Fase, Categoria, ListaIdeas) 
+                                             VALUES (@IdCategorizer, @NuevaFase, @Categoria, @ListaIdeas)";
+                        
+                        int categoriasDuplicadas = 0;
+                        foreach (var categoria in categoriasAnteriores)
+                        {
+                            using (SqlCommand insertCmd = new SqlCommand(insertQuery, conn, transaction))
+                            {
+                                insertCmd.Parameters.AddWithValue("@IdCategorizer", idCategorizer);
+                                insertCmd.Parameters.AddWithValue("@NuevaFase", nuevaFase);
+                                insertCmd.Parameters.AddWithValue("@Categoria", categoria.Categoria);
+                                insertCmd.Parameters.AddWithValue("@ListaIdeas", categoria.ListaIdeas ?? "");
+                                
+                                insertCmd.ExecuteNonQuery();
+                                categoriasDuplicadas++;
+                            }
+                        }
+
+                        // Confirmar la transacción
+                        transaction.Commit();
+
+                        _logger.LogInformation("Nueva fase iniciada exitosamente. Fase anterior: {FaseAnterior}, Nueva fase: {NuevaFase}, Categorías duplicadas: {CategoriasDuplicadas}", 
+                            fasesActuales, nuevaFase, categoriasDuplicadas);
+
+                        return Ok(new { 
+                            message = "Nueva fase iniciada correctamente", 
+                            idCategorizer = idCategorizer,
+                            faseAnterior = fasesActuales,
+                            nuevaFase = nuevaFase,
+                            categoriasDuplicadas = categoriasDuplicadas
+                        });
+                    }
+                    catch (Exception ex)
+                    {
+                        // Si hay error, hacer rollback de la transacción
+                        transaction.Rollback();
+                        throw ex;
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error al iniciar nueva fase para IdCategorizer {IdCategorizer}: {Message}", idCategorizer, ex.Message);
+            return StatusCode(500, new { error = ex.Message });
+        }
+    }
+
     // Endpoint de prueba para insertar categoría directamente
     [HttpPost("test-insert-categoria/{idCategorizer}")]
     public IActionResult TestInsertCategoria(int idCategorizer, [FromBody] CategoriaRequest request)
