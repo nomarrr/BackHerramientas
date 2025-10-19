@@ -156,15 +156,31 @@ public class ProyectoController : ControllerBase
                             categorizerId = Convert.ToInt32(cmdCategorizer.ExecuteScalar());
                         }
 
+                        // Crear automáticamente una sesión de voting para el proyecto con 1 fase
+                        string queryVoting = @"INSERT INTO Voting (IdProy, Fases) 
+                                             VALUES (@IdProy, @Fases);
+                                             SELECT SCOPE_IDENTITY();";
+
+                        int votingId;
+                        using (SqlCommand cmdVoting = new SqlCommand(queryVoting, conn, transaction))
+                        {
+                            cmdVoting.Parameters.AddWithValue("@IdProy", proyectoId);
+                            cmdVoting.Parameters.AddWithValue("@Fases", 1);
+
+                            votingId = Convert.ToInt32(cmdVoting.ExecuteScalar());
+                        }
+
                         // Confirmar la transacción
                         transaction.Commit();
 
-                        _logger.LogInformation("Proyecto creado exitosamente con ID: {ProyectoId} y Categorizer con ID: {CategorizerId}", proyectoId, categorizerId);
+                        _logger.LogInformation("Proyecto creado exitosamente con ID: {ProyectoId}, Categorizer con ID: {CategorizerId} y Voting con ID: {VotingId}", 
+                            proyectoId, categorizerId, votingId);
 
                         return Ok(new { 
-                            message = "Proyecto creado correctamente con sesión de categorizer", 
+                            message = "Proyecto creado correctamente con sesiones de categorizer y voting", 
                             id = proyectoId,
-                            categorizerId = categorizerId
+                            categorizerId = categorizerId,
+                            votingId = votingId
                         });
                     }
                     catch (Exception ex)
