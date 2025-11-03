@@ -13,7 +13,7 @@ public class BrainstormController : ControllerBase
 
     public BrainstormController(ILogger<BrainstormController> logger)
     {
-        _connectionString = @"Data Source=LAPTOP-7MITNTQF\SQLEXPRESS;Initial Catalog=HerramientasV2;User ID=sa;Password=admin;Encrypt=True;TrustServerCertificate=True";
+        _connectionString = @"Data Source=LAPTOP-7MITNTQF\SQLEXPRESS;Initial Catalog=HerramientasV3;User ID=sa;Password=admin;Encrypt=True;TrustServerCertificate=True";
         _logger = logger;
     }
 
@@ -28,7 +28,7 @@ public class BrainstormController : ControllerBase
             try
             {
                 conn.Open();
-                string query = "SELECT Id, IdProy, Titulo, Descripcion, MinIdeas, MaxIdeas FROM Brainstorm";
+                string query = "SELECT Id, IdProy, IdTopico, Titulo, Descripcion, MiniIdeas, MaxIdeas FROM Brainstorming";
 
                 using (SqlCommand cmd = new SqlCommand(query, conn))
                 {
@@ -40,9 +40,10 @@ public class BrainstormController : ControllerBase
                             {
                                 Id = (int)reader["Id"],
                                 IdProy = (int)reader["IdProy"],
+                                IdTopico = reader["IdTopico"] == DBNull.Value ? (int?)null : (int)reader["IdTopico"],
                                 Titulo = reader["Titulo"].ToString(),
                                 Descripcion = reader["Descripcion"].ToString(),
-                                MinIdeas = (int)reader["MinIdeas"],
+                                MiniIdeas = (int)reader["MiniIdeas"],
                                 MaxIdeas = (int)reader["MaxIdeas"]
                             });
                         }
@@ -68,7 +69,7 @@ public class BrainstormController : ControllerBase
             try
             {
                 conn.Open();
-                string query = "SELECT Id, IdProy, Titulo, Descripcion, MinIdeas, MaxIdeas FROM Brainstorm WHERE Id = @Id";
+                string query = "SELECT Id, IdProy, IdTopico, Titulo, Descripcion, MiniIdeas, MaxIdeas FROM Brainstorming WHERE Id = @Id";
 
                 using (SqlCommand cmd = new SqlCommand(query, conn))
                 {
@@ -82,9 +83,10 @@ public class BrainstormController : ControllerBase
                             {
                                 Id = (int)reader["Id"],
                                 IdProy = (int)reader["IdProy"],
+                                IdTopico = reader["IdTopico"] == DBNull.Value ? (int?)null : (int)reader["IdTopico"],
                                 Titulo = reader["Titulo"].ToString(),
                                 Descripcion = reader["Descripcion"].ToString(),
-                                MinIdeas = (int)reader["MinIdeas"],
+                                MiniIdeas = (int)reader["MiniIdeas"],
                                 MaxIdeas = (int)reader["MaxIdeas"]
                             };
                             return Ok(session);
@@ -115,7 +117,7 @@ public class BrainstormController : ControllerBase
             try
             {
                 conn.Open();
-                string query = "SELECT Id, IdProy, Titulo, Descripcion, MinIdeas, MaxIdeas FROM Brainstorm WHERE IdProy = @IdProy";
+                string query = "SELECT Id, IdProy, IdTopico, Titulo, Descripcion, MiniIdeas, MaxIdeas FROM Brainstorming WHERE IdProy = @IdProy";
 
                 using (SqlCommand cmd = new SqlCommand(query, conn))
                 {
@@ -129,9 +131,10 @@ public class BrainstormController : ControllerBase
                             {
                                 Id = (int)reader["Id"],
                                 IdProy = (int)reader["IdProy"],
+                                IdTopico = reader["IdTopico"] == DBNull.Value ? (int?)null : (int)reader["IdTopico"],
                                 Titulo = reader["Titulo"].ToString(),
                                 Descripcion = reader["Descripcion"].ToString(),
-                                MinIdeas = (int)reader["MinIdeas"],
+                                MiniIdeas = (int)reader["MiniIdeas"],
                                 MaxIdeas = (int)reader["MaxIdeas"]
                             });
                         }
@@ -172,16 +175,17 @@ public class BrainstormController : ControllerBase
             using (SqlConnection conn = new SqlConnection(_connectionString))
             {
                 conn.Open();
-                string query = @"INSERT INTO Brainstorm (IdProy, Titulo, Descripcion, MinIdeas, MaxIdeas) 
-                               VALUES (@IdProy, @Titulo, @Descripcion, @MinIdeas, @MaxIdeas);
+                string query = @"INSERT INTO Brainstorming (IdProy, IdTopico, Titulo, Descripcion, MiniIdeas, MaxIdeas) 
+                               VALUES (@IdProy, @IdTopico, @Titulo, @Descripcion, @MiniIdeas, @MaxIdeas);
                                SELECT SCOPE_IDENTITY();";
 
                 using (SqlCommand cmd = new SqlCommand(query, conn))
                 {
                     cmd.Parameters.AddWithValue("@IdProy", request.IdProy);
+                    cmd.Parameters.AddWithValue("@IdTopico", request.IdTopico ?? (object)DBNull.Value);
                     cmd.Parameters.AddWithValue("@Titulo", request.Titulo);
                     cmd.Parameters.AddWithValue("@Descripcion", request.Descripcion);
-                    cmd.Parameters.AddWithValue("@MinIdeas", request.MinIdeas);
+                    cmd.Parameters.AddWithValue("@MiniIdeas", request.MiniIdeas);
                     cmd.Parameters.AddWithValue("@MaxIdeas", request.MaxIdeas);
 
                     int newId = Convert.ToInt32(cmd.ExecuteScalar());
@@ -210,18 +214,19 @@ public class BrainstormController : ControllerBase
             using (SqlConnection conn = new SqlConnection(_connectionString))
             {
                 conn.Open();
-                string query = @"UPDATE Brainstorm
-                               SET IdProy = @IdProy, Titulo = @Titulo, Descripcion = @Descripcion, 
-                                   MinIdeas = @MinIdeas, MaxIdeas = @MaxIdeas
+                string query = @"UPDATE Brainstorming
+                               SET IdProy = @IdProy, IdTopico = @IdTopico, Titulo = @Titulo, Descripcion = @Descripcion, 
+                                   MiniIdeas = @MiniIdeas, MaxIdeas = @MaxIdeas
                                WHERE Id = @Id";
 
                 using (SqlCommand cmd = new SqlCommand(query, conn))
                 {
                     cmd.Parameters.AddWithValue("@Id", id);
                     cmd.Parameters.AddWithValue("@IdProy", request.IdProy);
+                    cmd.Parameters.AddWithValue("@IdTopico", request.IdTopico ?? (object)DBNull.Value);
                     cmd.Parameters.AddWithValue("@Titulo", request.Titulo ?? (object)DBNull.Value);
                     cmd.Parameters.AddWithValue("@Descripcion", request.Descripcion ?? (object)DBNull.Value);
-                    cmd.Parameters.AddWithValue("@MinIdeas", request.MinIdeas);
+                    cmd.Parameters.AddWithValue("@MiniIdeas", request.MiniIdeas);
                     cmd.Parameters.AddWithValue("@MaxIdeas", request.MaxIdeas);
 
                     int rowsAffected = cmd.ExecuteNonQuery();
@@ -251,7 +256,7 @@ public class BrainstormController : ControllerBase
             try
             {
                 conn.Open();
-                string query = "DELETE FROM Brainstorm WHERE Id = @Id";
+                string query = "DELETE FROM Brainstorming WHERE Id = @Id";
 
                 using (SqlCommand cmd = new SqlCommand(query, conn))
                 {
@@ -286,8 +291,8 @@ public class BrainstormController : ControllerBase
             {
                 conn.Open();
                 string query = @"SELECT ib.Id, ib.IdBrainstorm, ib.IdUsuario, ib.Idea, u.Nombre
-                               FROM Ideas_brainstorm ib
-                               INNER JOIN Brainstorm b ON ib.IdBrainstorm = b.Id
+                               FROM Ideas_Brainstorm ib
+                               INNER JOIN Brainstorming b ON ib.IdBrainstorm = b.Id
                                INNER JOIN Usuarios u ON ib.IdUsuario = u.Id
                                WHERE b.IdProy = @IdProy";
 
@@ -333,9 +338,9 @@ public class BrainstormController : ControllerBase
             {
                 conn.Open();
                 string query = @"SELECT ib.Id, ib.IdBrainstorm, ib.IdUsuario, ib.Idea, u.Nombre
-                               FROM Ideas_brainstorm ib
+                               FROM Ideas_Brainstorm ib
                                INNER JOIN Usuarios u ON ib.IdUsuario = u.Id
-                               INNER JOIN Brainstorm b ON ib.IdBrainstorm = b.Id
+                               INNER JOIN Brainstorming b ON ib.IdBrainstorm = b.Id
                                WHERE b.IdProy = @IdProy AND ib.IdUsuario = @IdUsuario";
 
                 using (SqlCommand cmd = new SqlCommand(query, conn))
@@ -381,7 +386,7 @@ public class BrainstormController : ControllerBase
             {
                 conn.Open();
                 string query = @"SELECT ib.Id, ib.IdBrainstorm, ib.IdUsuario, ib.Idea, u.Nombre
-                               FROM Ideas_brainstorm ib
+                               FROM Ideas_Brainstorm ib
                                INNER JOIN Usuarios u ON ib.IdUsuario = u.Id
                                WHERE ib.IdBrainstorm = @IdBrainstorm";
 
@@ -434,34 +439,34 @@ public class BrainstormController : ControllerBase
             using (SqlConnection conn = new SqlConnection(_connectionString))
             {
                 conn.Open();
-                string query = @"INSERT INTO Ideas_brainstorm (IdBrainstorm, IdUsuario, Idea) 
-                               VALUES (@IdBrainstorm, @IdUsuario, @Idea)";
+                string query = @"INSERT INTO Ideas_Brainstorm (IdBrainstorm, IdUsuario, Idea) 
+                               VALUES (@IdBrainstorm, @IdUsuario, @Idea);
+                               SELECT SCOPE_IDENTITY();";
 
+                int newId;
                 using (SqlCommand cmd = new SqlCommand(query, conn))
                 {
                     cmd.Parameters.AddWithValue("@IdBrainstorm", idBrainstorm);
                     cmd.Parameters.AddWithValue("@IdUsuario", request.IdUsuario);
                     cmd.Parameters.AddWithValue("@Idea", request.Idea);
 
-                    int rowsAffected = cmd.ExecuteNonQuery();
-                    
-                    if (rowsAffected == 0)
+                    var result = cmd.ExecuteScalar();
+                    if (result == null || result == DBNull.Value)
                     {
                         return StatusCode(500, new { error = "No se pudo insertar la idea" });
                     }
+                    newId = Convert.ToInt32(result);
                 }
 
-                // Ahora obtener la idea completa con los datos del usuario
+                // Obtener la idea completa con los datos del usuario
                 string selectQuery = @"SELECT ib.Id, ib.IdBrainstorm, ib.IdUsuario, ib.Idea, ISNULL(u.Nombre, 'Usuario') as Nombre
-                                     FROM Ideas_brainstorm ib
+                                     FROM Ideas_Brainstorm ib
                                      LEFT JOIN Usuarios u ON ib.IdUsuario = u.Id
-                                     WHERE ib.IdBrainstorm = @IdBrainstorm AND ib.IdUsuario = @IdUsuario AND CAST(ib.Idea AS NVARCHAR(MAX)) = @Idea";
+                                     WHERE ib.Id = @Id";
 
                 using (SqlCommand selectCmd = new SqlCommand(selectQuery, conn))
                 {
-                    selectCmd.Parameters.AddWithValue("@IdBrainstorm", idBrainstorm);
-                    selectCmd.Parameters.AddWithValue("@IdUsuario", request.IdUsuario);
-                    selectCmd.Parameters.AddWithValue("@Idea", request.Idea);
+                    selectCmd.Parameters.AddWithValue("@Id", newId);
                     
                     using (SqlDataReader reader = selectCmd.ExecuteReader())
                     {
@@ -470,10 +475,10 @@ public class BrainstormController : ControllerBase
                             var idea = new BrainstormIdea
                             {
                                 Id = (int)reader["Id"],
-                                IdBrainstorm = reader["IdBrainstorm"] != DBNull.Value ? (int)reader["IdBrainstorm"] : idBrainstorm,
-                                IdUsuario = reader["IdUsuario"] != DBNull.Value ? (int)reader["IdUsuario"] : request.IdUsuario,
-                                Idea = reader["Idea"] != DBNull.Value ? reader["Idea"].ToString() : request.Idea,
-                                NombreUsuario = reader["Nombre"] != DBNull.Value ? reader["Nombre"].ToString() : "Usuario"
+                                IdBrainstorm = (int)reader["IdBrainstorm"],
+                                IdUsuario = (int)reader["IdUsuario"],
+                                Idea = reader["Idea"].ToString(),
+                                NombreUsuario = reader["Nombre"].ToString()
                             };
                             
                             return Ok(new { message = "Idea agregada correctamente", idea = idea });
@@ -512,7 +517,7 @@ public class BrainstormController : ControllerBase
             using (SqlConnection conn = new SqlConnection(_connectionString))
             {
                 conn.Open();
-                string query = @"UPDATE Ideas_brainstorm 
+                string query = @"UPDATE Ideas_Brainstorm 
                                SET Idea = @Idea 
                                WHERE IdBrainstorm = @IdBrainstorm AND IdUsuario = @IdUsuario AND CAST(Idea AS NVARCHAR(MAX)) = @IdeaOriginal";
 
@@ -533,7 +538,7 @@ public class BrainstormController : ControllerBase
 
                 // Obtener la idea actualizada
                 string selectQuery = @"SELECT ib.IdBrainstorm, ib.IdUsuario, ib.Idea, ISNULL(u.Nombre, 'Usuario') as Nombre
-                                     FROM Ideas_brainstorm ib
+                                     FROM Ideas_Brainstorm ib
                                      LEFT JOIN Usuarios u ON ib.IdUsuario = u.Id
                                      WHERE ib.IdBrainstorm = @IdBrainstorm AND ib.IdUsuario = @IdUsuario AND CAST(ib.Idea AS NVARCHAR(MAX)) = @Idea";
 
@@ -586,7 +591,7 @@ public class BrainstormController : ControllerBase
             using (SqlConnection conn = new SqlConnection(_connectionString))
             {
                 conn.Open();
-                string query = @"DELETE FROM Ideas_brainstorm 
+                string query = @"DELETE FROM Ideas_Brainstorm 
                                WHERE IdBrainstorm = @IdBrainstorm AND IdUsuario = @IdUsuario AND CAST(Idea AS NVARCHAR(MAX)) = @Idea";
 
                 using (SqlCommand cmd = new SqlCommand(query, conn))
@@ -635,7 +640,7 @@ public class BrainstormController : ControllerBase
                 
                 // Verificar que la idea existe y pertenece al usuario
                 string checkQuery = @"SELECT ib.Id, ib.IdBrainstorm, ib.IdUsuario, ib.Idea, u.Nombre
-                                    FROM Ideas_brainstorm ib
+                                    FROM Ideas_Brainstorm ib
                                     LEFT JOIN Usuarios u ON ib.IdUsuario = u.Id
                                     WHERE ib.Id = @Id";
 
@@ -660,7 +665,7 @@ public class BrainstormController : ControllerBase
                 }
 
                 // Actualizar la idea
-                string updateQuery = @"UPDATE Ideas_brainstorm 
+                string updateQuery = @"UPDATE Ideas_Brainstorm 
                                      SET Idea = @Idea 
                                      WHERE Id = @Id";
 
@@ -679,7 +684,7 @@ public class BrainstormController : ControllerBase
 
                 // Obtener la idea actualizada
                 string selectQuery = @"SELECT ib.Id, ib.IdBrainstorm, ib.IdUsuario, ib.Idea, ISNULL(u.Nombre, 'Usuario') as Nombre
-                                     FROM Ideas_brainstorm ib
+                                     FROM Ideas_Brainstorm ib
                                      LEFT JOIN Usuarios u ON ib.IdUsuario = u.Id
                                      WHERE ib.Id = @Id";
 
@@ -733,7 +738,7 @@ public class BrainstormController : ControllerBase
                 conn.Open();
                 
                 // Verificar que la idea existe y pertenece al usuario
-                string checkQuery = @"SELECT Id, IdUsuario FROM Ideas_brainstorm WHERE Id = @Id";
+                string checkQuery = @"SELECT Id, IdUsuario FROM Ideas_Brainstorm WHERE Id = @Id";
 
                 using (SqlCommand checkCmd = new SqlCommand(checkQuery, conn))
                 {
@@ -756,7 +761,7 @@ public class BrainstormController : ControllerBase
                 }
 
                 // Eliminar la idea
-                string deleteQuery = @"DELETE FROM Ideas_brainstorm WHERE Id = @Id";
+                string deleteQuery = @"DELETE FROM Ideas_Brainstorm WHERE Id = @Id";
 
                 using (SqlCommand cmd = new SqlCommand(deleteQuery, conn))
                 {
@@ -786,18 +791,20 @@ public class BrainstormSession
 {
     public int Id { get; set; }
     public int IdProy { get; set; }
+    public int? IdTopico { get; set; }
     public string Titulo { get; set; }
     public string Descripcion { get; set; }
-    public int MinIdeas { get; set; }
+    public int MiniIdeas { get; set; }
     public int MaxIdeas { get; set; }
 }
 
 public class BrainstormSessionRequest
 {
     public int IdProy { get; set; }
+    public int? IdTopico { get; set; }
     public string Titulo { get; set; }
     public string Descripcion { get; set; }
-    public int MinIdeas { get; set; }
+    public int MiniIdeas { get; set; }
     public int MaxIdeas { get; set; }
 }
 

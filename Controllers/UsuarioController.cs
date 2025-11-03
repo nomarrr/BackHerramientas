@@ -13,7 +13,7 @@ public class UsuarioController : ControllerBase
 
     public UsuarioController(ILogger<UsuarioController> logger)
     {
-        _connectionString = @"Data Source=LAPTOP-7MITNTQF\SQLEXPRESS;Initial Catalog=HerramientasV2;User ID=sa;Password=admin;Encrypt=True;TrustServerCertificate=True";
+        _connectionString = @"Data Source=LAPTOP-7MITNTQF\SQLEXPRESS;Initial Catalog=HerramientasV3;User ID=sa;Password=admin;Encrypt=True;TrustServerCertificate=True";
         _logger = logger;
     }
 
@@ -28,7 +28,7 @@ public class UsuarioController : ControllerBase
             try
             {
                 conn.Open();
-                string query = "SELECT Id, Nombre FROM Usuarios";
+                string query = "SELECT Id, Nombre, Telefono, Correo, Usuario FROM Usuarios";
 
                 using (SqlCommand cmd = new SqlCommand(query, conn))
                 {
@@ -39,7 +39,10 @@ public class UsuarioController : ControllerBase
                             response.usuarios.Add(new UsuarioItem
                             {
                                 Id = (int)reader["Id"],
-                                Nombre = reader["Nombre"].ToString()
+                                Nombre = reader["Nombre"].ToString(),
+                                Telefono = reader["Telefono"]?.ToString(),
+                                Correo = reader["Correo"]?.ToString(),
+                                Usuario = reader["Usuario"]?.ToString()
                             });
                         }
                     }
@@ -64,7 +67,7 @@ public class UsuarioController : ControllerBase
             try
             {
                 conn.Open();
-                string query = "SELECT Id, Nombre FROM Usuarios WHERE Id = @Id";
+                string query = "SELECT Id, Nombre, Telefono, Correo, Usuario FROM Usuarios WHERE Id = @Id";
 
                 using (SqlCommand cmd = new SqlCommand(query, conn))
                 {
@@ -77,7 +80,10 @@ public class UsuarioController : ControllerBase
                             var usuario = new UsuarioItem
                             {
                                 Id = (int)reader["Id"],
-                                Nombre = reader["Nombre"].ToString()
+                                Nombre = reader["Nombre"].ToString(),
+                                Telefono = reader["Telefono"]?.ToString(),
+                                Correo = reader["Correo"]?.ToString(),
+                                Usuario = reader["Usuario"]?.ToString()
                             };
                             return Ok(usuario);
                         }
@@ -112,21 +118,25 @@ public class UsuarioController : ControllerBase
                 return BadRequest(new { error = "El nombre del usuario es requerido" });
             }
 
-            if (request.Nombre.Length > 50)
+            if (request.Nombre.Length > 100)
             {
-                return BadRequest(new { error = "El nombre del usuario no puede exceder los 50 caracteres" });
+                return BadRequest(new { error = "El nombre del usuario no puede exceder los 100 caracteres" });
             }
 
             using (SqlConnection conn = new SqlConnection(_connectionString))
             {
                 conn.Open();
-                string query = @"INSERT INTO Usuarios (Nombre) 
-                               VALUES (@Nombre);
+                string query = @"INSERT INTO Usuarios (Nombre, Telefono, Correo, Usuario, Passw) 
+                               VALUES (@Nombre, @Telefono, @Correo, @Usuario, @Passw);
                                SELECT SCOPE_IDENTITY();";
 
                 using (SqlCommand cmd = new SqlCommand(query, conn))
                 {
                     cmd.Parameters.AddWithValue("@Nombre", request.Nombre);
+                    cmd.Parameters.AddWithValue("@Telefono", request.Telefono ?? (object)DBNull.Value);
+                    cmd.Parameters.AddWithValue("@Correo", request.Correo ?? (object)DBNull.Value);
+                    cmd.Parameters.AddWithValue("@Usuario", request.Usuario ?? (object)DBNull.Value);
+                    cmd.Parameters.AddWithValue("@Passw", request.Passw ?? (object)DBNull.Value);
 
                     int newId = Convert.ToInt32(cmd.ExecuteScalar());
                     return Ok(new { message = "Usuario creado correctamente", id = newId });
@@ -151,22 +161,26 @@ public class UsuarioController : ControllerBase
                 return BadRequest(new { error = "La solicitud no puede estar vacía" });
             }
 
-            if (request.Nombre != null && request.Nombre.Length > 50)
+            if (request.Nombre != null && request.Nombre.Length > 100)
             {
-                return BadRequest(new { error = "El nombre del usuario no puede exceder los 50 caracteres" });
+                return BadRequest(new { error = "El nombre del usuario no puede exceder los 100 caracteres" });
             }
 
             using (SqlConnection conn = new SqlConnection(_connectionString))
             {
                 conn.Open();
                 string query = @"UPDATE Usuarios
-                               SET Nombre = @Nombre
+                               SET Nombre = @Nombre, Telefono = @Telefono, Correo = @Correo, Usuario = @Usuario, Passw = @Passw
                                WHERE Id = @Id";
 
                 using (SqlCommand cmd = new SqlCommand(query, conn))
                 {
                     cmd.Parameters.AddWithValue("@Id", id);
                     cmd.Parameters.AddWithValue("@Nombre", request.Nombre ?? (object)DBNull.Value);
+                    cmd.Parameters.AddWithValue("@Telefono", request.Telefono ?? (object)DBNull.Value);
+                    cmd.Parameters.AddWithValue("@Correo", request.Correo ?? (object)DBNull.Value);
+                    cmd.Parameters.AddWithValue("@Usuario", request.Usuario ?? (object)DBNull.Value);
+                    cmd.Parameters.AddWithValue("@Passw", request.Passw ?? (object)DBNull.Value);
 
                     int rowsAffected = cmd.ExecuteNonQuery();
 
@@ -231,7 +245,7 @@ public class UsuarioController : ControllerBase
                 conn.Open();
 
                 // Contar ideas de brainstorm
-                string queryIdeas = "SELECT COUNT(*) FROM Ideas_brainstorm WHERE IdUsuario = @Id";
+                string queryIdeas = "SELECT COUNT(*) FROM Ideas_Brainstorm WHERE IdUsuario = @Id";
                 using (SqlCommand cmd = new SqlCommand(queryIdeas, conn))
                 {
                     cmd.Parameters.AddWithValue("@Id", id);
@@ -247,7 +261,7 @@ public class UsuarioController : ControllerBase
                 }
 
                 // Contar comentarios
-                string queryComentarios = "SELECT COUNT(*) FROM Commenter WHERE IdUsuario = @Id";
+                string queryComentarios = "SELECT COUNT(*) FROM Comentarios_comenter WHERE IdUsuario = @Id";
                 using (SqlCommand cmd = new SqlCommand(queryComentarios, conn))
                 {
                     cmd.Parameters.AddWithValue("@Id", id);
@@ -272,6 +286,72 @@ public class UsuarioController : ControllerBase
         }
     }
 
+    // Iniciar sesión (Login)
+    [HttpPost("login")]
+    public IActionResult Login([FromBody] LoginRequest request)
+    {
+        try
+        {
+            if (request == null)
+            {
+                return BadRequest(new { error = "La solicitud no puede estar vacía" });
+            }
+
+            if (string.IsNullOrEmpty(request.Usuario))
+            {
+                return BadRequest(new { error = "El nombre de usuario es requerido" });
+            }
+
+            if (string.IsNullOrEmpty(request.Passw))
+            {
+                return BadRequest(new { error = "La contraseña es requerida" });
+            }
+
+            using (SqlConnection conn = new SqlConnection(_connectionString))
+            {
+                conn.Open();
+                string query = "SELECT Id, Nombre, Telefono, Correo, Usuario FROM Usuarios WHERE Usuario = @Usuario AND Passw = @Passw";
+
+                using (SqlCommand cmd = new SqlCommand(query, conn))
+                {
+                    cmd.Parameters.AddWithValue("@Usuario", request.Usuario);
+                    cmd.Parameters.AddWithValue("@Passw", request.Passw);
+
+                    using (SqlDataReader reader = cmd.ExecuteReader())
+                    {
+                        if (reader.Read())
+                        {
+                            var usuario = new UsuarioItem
+                            {
+                                Id = (int)reader["Id"],
+                                Nombre = reader["Nombre"].ToString(),
+                                Telefono = reader["Telefono"]?.ToString(),
+                                Correo = reader["Correo"]?.ToString(),
+                                Usuario = reader["Usuario"]?.ToString()
+                            };
+
+                            _logger.LogInformation("Usuario {Usuario} inició sesión exitosamente", request.Usuario);
+                            return Ok(new { 
+                                message = "Inicio de sesión exitoso",
+                                usuario = usuario 
+                            });
+                        }
+                        else
+                        {
+                            _logger.LogWarning("Intento de login fallido para usuario: {Usuario}", request.Usuario);
+                            return Unauthorized(new { error = "Usuario o contraseña incorrectos" });
+                        }
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error al intentar iniciar sesión para usuario: {Usuario}", request?.Usuario);
+            return StatusCode(500, new { error = ex.Message });
+        }
+    }
+
     // Obtener actividad del usuario por proyecto
     [HttpGet("{id}/actividad/{idProy}")]
     public IActionResult GetActividadUsuario(int id, int idProy)
@@ -286,8 +366,8 @@ public class UsuarioController : ControllerBase
 
                 // Ideas en brainstorm del proyecto
                 string queryIdeas = @"SELECT ib.Idea, b.Titulo as BrainstormTitulo
-                                    FROM Ideas_brainstorm ib
-                                    INNER JOIN Brainstorm b ON ib.IdBrainstorm = b.Id
+                                    FROM Ideas_Brainstorm ib
+                                    INNER JOIN Brainstorming b ON ib.IdBrainstorm = b.Id
                                     WHERE ib.IdUsuario = @IdUsuario AND b.IdProy = @IdProy";
 
                 using (SqlCommand cmd = new SqlCommand(queryIdeas, conn))
@@ -309,9 +389,10 @@ public class UsuarioController : ControllerBase
                 }
 
                 // Comentarios en el proyecto
-                string queryComentarios = @"SELECT c.Comentarios, c.Fase
-                                          FROM Commenter c
-                                          WHERE c.IdUsuario = @IdUsuario AND c.IdProy = @IdProy";
+                string queryComentarios = @"SELECT c.Comentario, c.Fase
+                                          FROM Comentarios_comenter c
+                                          INNER JOIN Comenter co ON c.IdComenter = co.Id
+                                          WHERE c.IdUsuario = @IdUsuario AND co.IdProy = @IdProy";
 
                 using (SqlCommand cmd = new SqlCommand(queryComentarios, conn))
                 {
@@ -324,7 +405,7 @@ public class UsuarioController : ControllerBase
                         {
                             actividad.Comentarios.Add(new ComentarioActividad
                             {
-                                Comentario = reader["Comentarios"].ToString(),
+                                Comentario = reader["Comentario"].ToString(),
                                 Fase = (int)reader["Fase"]
                             });
                         }
@@ -346,11 +427,18 @@ public class UsuarioItem
 {
     public int Id { get; set; }
     public string Nombre { get; set; }
+    public string? Telefono { get; set; }
+    public string? Correo { get; set; }
+    public string? Usuario { get; set; }
 }
 
 public class UsuarioRequest
 {
     public string Nombre { get; set; }
+    public string? Telefono { get; set; }
+    public string? Correo { get; set; }
+    public string? Usuario { get; set; }
+    public string? Passw { get; set; }
 }
 
 public class UsuariosResponse
@@ -382,4 +470,10 @@ public class ComentarioActividad
 {
     public string Comentario { get; set; }
     public int Fase { get; set; }
+}
+
+public class LoginRequest
+{
+    public string Usuario { get; set; }
+    public string Passw { get; set; }
 }

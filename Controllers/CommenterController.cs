@@ -13,7 +13,7 @@ public class CommenterController : ControllerBase
 
     public CommenterController(ILogger<CommenterController> logger)
     {
-        _connectionString = @"Data Source=LAPTOP-7MITNTQF\SQLEXPRESS;Initial Catalog=HerramientasV2;User ID=sa;Password=admin;Encrypt=True;TrustServerCertificate=True";
+        _connectionString = @"Data Source=LAPTOP-7MITNTQF\SQLEXPRESS;Initial Catalog=HerramientasV3;User ID=sa;Password=admin;Encrypt=True;TrustServerCertificate=True";
         _logger = logger;
     }
 
@@ -28,9 +28,10 @@ public class CommenterController : ControllerBase
             try
             {
                 conn.Open();
-                string query = @"SELECT c.Id, c.IdProy, c.IdCategoria, c.Fase, c.IdUsuario, c.Comentarios, u.Nombre
-                               FROM Commenter c
-                               INNER JOIN Usuarios u ON c.IdUsuario = u.Id";
+                string query = @"SELECT cc.Id, c.IdProy, c.IdTopico, c.IdCategorizer, cc.IdCategoria, cc.Fase, cc.IdUsuario, cc.Comentario, u.Nombre
+                               FROM Comenter c
+                               INNER JOIN Comentarios_comenter cc ON c.Id = cc.IdComenter
+                               INNER JOIN Usuarios u ON cc.IdUsuario = u.Id";
 
                 using (SqlCommand cmd = new SqlCommand(query, conn))
                 {
@@ -42,10 +43,12 @@ public class CommenterController : ControllerBase
                             {
                                 Id = (int)reader["Id"],
                                 IdProy = (int)reader["IdProy"],
+                                IdTopico = reader["IdTopico"] == DBNull.Value ? (int?)null : (int)reader["IdTopico"],
+                                IdCategorizer = reader["IdCategorizer"] == DBNull.Value ? (int?)null : (int)reader["IdCategorizer"],
                                 IdCategoria = (int)reader["IdCategoria"],
                                 Fase = (int)reader["Fase"],
                                 IdUsuario = (int)reader["IdUsuario"],
-                                Comentarios = reader["Comentarios"].ToString(),
+                                Comentario = reader["Comentario"].ToString(),
                                 NombreUsuario = reader["Nombre"].ToString()
                             });
                         }
@@ -71,10 +74,11 @@ public class CommenterController : ControllerBase
             try
             {
                 conn.Open();
-                string query = @"SELECT c.Id, c.IdProy, c.IdCategoria, c.Fase, c.IdUsuario, c.Comentarios, u.Nombre
-                               FROM Commenter c
-                               INNER JOIN Usuarios u ON c.IdUsuario = u.Id
-                               WHERE c.Id = @Id";
+                string query = @"SELECT cc.Id, c.IdProy, c.IdTopico, c.IdCategorizer, cc.IdCategoria, cc.Fase, cc.IdUsuario, cc.Comentario, u.Nombre
+                               FROM Comenter c
+                               INNER JOIN Comentarios_comenter cc ON c.Id = cc.IdComenter
+                               INNER JOIN Usuarios u ON cc.IdUsuario = u.Id
+                               WHERE cc.Id = @Id";
 
                 using (SqlCommand cmd = new SqlCommand(query, conn))
                 {
@@ -88,10 +92,12 @@ public class CommenterController : ControllerBase
                             {
                                 Id = (int)reader["Id"],
                                 IdProy = (int)reader["IdProy"],
+                                IdTopico = reader["IdTopico"] == DBNull.Value ? (int?)null : (int)reader["IdTopico"],
+                                IdCategorizer = reader["IdCategorizer"] == DBNull.Value ? (int?)null : (int)reader["IdCategorizer"],
                                 IdCategoria = (int)reader["IdCategoria"],
                                 Fase = (int)reader["Fase"],
                                 IdUsuario = (int)reader["IdUsuario"],
-                                Comentarios = reader["Comentarios"].ToString(),
+                                Comentario = reader["Comentario"].ToString(),
                                 NombreUsuario = reader["Nombre"].ToString()
                             };
                             return Ok(comment);
@@ -122,9 +128,10 @@ public class CommenterController : ControllerBase
             try
             {
                 conn.Open();
-                string query = @"SELECT c.Id, c.IdProy, c.IdCategoria, c.Fase, c.IdUsuario, c.Comentarios, u.Nombre
-                               FROM Commenter c
-                               INNER JOIN Usuarios u ON c.IdUsuario = u.Id
+                string query = @"SELECT cc.Id, c.IdProy, c.IdTopico, c.IdCategorizer, cc.IdCategoria, cc.Fase, cc.IdUsuario, cc.Comentario, u.Nombre
+                               FROM Comenter c
+                               INNER JOIN Comentarios_comenter cc ON c.Id = cc.IdComenter
+                               INNER JOIN Usuarios u ON cc.IdUsuario = u.Id
                                WHERE c.IdProy = @IdProy";
 
                 using (SqlCommand cmd = new SqlCommand(query, conn))
@@ -139,10 +146,12 @@ public class CommenterController : ControllerBase
                             {
                                 Id = (int)reader["Id"],
                                 IdProy = (int)reader["IdProy"],
+                                IdTopico = reader["IdTopico"] == DBNull.Value ? (int?)null : (int)reader["IdTopico"],
+                                IdCategorizer = reader["IdCategorizer"] == DBNull.Value ? (int?)null : (int)reader["IdCategorizer"],
                                 IdCategoria = (int)reader["IdCategoria"],
                                 Fase = (int)reader["Fase"],
                                 IdUsuario = (int)reader["IdUsuario"],
-                                Comentarios = reader["Comentarios"].ToString(),
+                                Comentario = reader["Comentario"].ToString(),
                                 NombreUsuario = reader["Nombre"].ToString()
                             });
                         }
@@ -170,10 +179,11 @@ public class CommenterController : ControllerBase
             try
             {
                 conn.Open();
-                string query = @"SELECT c.Id, c.IdProy, c.IdCategoria, c.Fase, c.IdUsuario, c.Comentarios, u.Nombre
-                               FROM Commenter c
-                               INNER JOIN Usuarios u ON c.IdUsuario = u.Id
-                               WHERE c.IdCategoria = @IdCategoria";
+                string query = @"SELECT cc.Id, c.IdProy, c.IdTopico, c.IdCategorizer, cc.IdCategoria, cc.Fase, cc.IdUsuario, cc.Comentario, u.Nombre
+                               FROM Comenter c
+                               INNER JOIN Comentarios_comenter cc ON c.Id = cc.IdComenter
+                               INNER JOIN Usuarios u ON cc.IdUsuario = u.Id
+                               WHERE cc.IdCategoria = @IdCategoria";
 
                 using (SqlCommand cmd = new SqlCommand(query, conn))
                 {
@@ -187,10 +197,12 @@ public class CommenterController : ControllerBase
                             {
                                 Id = (int)reader["Id"],
                                 IdProy = (int)reader["IdProy"],
+                                IdTopico = reader["IdTopico"] == DBNull.Value ? (int?)null : (int)reader["IdTopico"],
+                                IdCategorizer = reader["IdCategorizer"] == DBNull.Value ? (int?)null : (int)reader["IdCategorizer"],
                                 IdCategoria = (int)reader["IdCategoria"],
                                 Fase = (int)reader["Fase"],
                                 IdUsuario = (int)reader["IdUsuario"],
-                                Comentarios = reader["Comentarios"].ToString(),
+                                Comentario = reader["Comentario"].ToString(),
                                 NombreUsuario = reader["Nombre"].ToString()
                             });
                         }
@@ -218,7 +230,7 @@ public class CommenterController : ControllerBase
                 return BadRequest(new { error = "La solicitud no puede estar vacía" });
             }
 
-            if (string.IsNullOrEmpty(request.Comentarios))
+            if (string.IsNullOrEmpty(request.Comentario))
             {
                 return BadRequest(new { error = "El comentario es requerido" });
             }
@@ -226,20 +238,65 @@ public class CommenterController : ControllerBase
             using (SqlConnection conn = new SqlConnection(_connectionString))
             {
                 conn.Open();
-                string query = @"INSERT INTO Commenter (IdProy, IdCategoria, Fase, IdUsuario, Comentarios) 
-                               VALUES (@IdProy, @IdCategoria, @Fase, @IdUsuario, @Comentarios);
-                               SELECT SCOPE_IDENTITY();";
-
-                using (SqlCommand cmd = new SqlCommand(query, conn))
+                using (var transaction = conn.BeginTransaction())
                 {
-                    cmd.Parameters.AddWithValue("@IdProy", request.IdProy);
-                    cmd.Parameters.AddWithValue("@IdCategoria", request.IdCategoria);
-                    cmd.Parameters.AddWithValue("@Fase", request.Fase);
-                    cmd.Parameters.AddWithValue("@IdUsuario", request.IdUsuario);
-                    cmd.Parameters.AddWithValue("@Comentarios", request.Comentarios);
+                    try
+                    {
+                        // Primero crear o verificar si existe Comenter
+                        string queryComenter = @"SELECT Id FROM Comenter 
+                                               WHERE IdProy = @IdProy AND IdTopico = @IdTopico AND IdCategorizer = @IdCategorizer";
+                        int idComenter = 0;
+                        
+                        using (SqlCommand cmd = new SqlCommand(queryComenter, conn, transaction))
+                        {
+                            cmd.Parameters.AddWithValue("@IdProy", request.IdProy);
+                            cmd.Parameters.AddWithValue("@IdTopico", request.IdTopico ?? (object)DBNull.Value);
+                            cmd.Parameters.AddWithValue("@IdCategorizer", request.IdCategorizer ?? (object)DBNull.Value);
+                            
+                            var result = cmd.ExecuteScalar();
+                            if (result != null)
+                            {
+                                idComenter = (int)result;
+                            }
+                            else
+                            {
+                                // Crear nuevo Comenter
+                                string insertComenter = @"INSERT INTO Comenter (IdProy, IdTopico, IdCategorizer) 
+                                                       VALUES (@IdProy, @IdTopico, @IdCategorizer);
+                                                       SELECT SCOPE_IDENTITY();";
+                                using (SqlCommand cmdInsert = new SqlCommand(insertComenter, conn, transaction))
+                                {
+                                    cmdInsert.Parameters.AddWithValue("@IdProy", request.IdProy);
+                                    cmdInsert.Parameters.AddWithValue("@IdTopico", request.IdTopico ?? (object)DBNull.Value);
+                                    cmdInsert.Parameters.AddWithValue("@IdCategorizer", request.IdCategorizer ?? (object)DBNull.Value);
+                                    idComenter = Convert.ToInt32(cmdInsert.ExecuteScalar());
+                                }
+                            }
+                        }
+                        
+                        // Ahora crear el comentario en Comentarios_comenter
+                        string query = @"INSERT INTO Comentarios_comenter (IdComenter, IdCategoria, Fase, IdUsuario, Comentario) 
+                                       VALUES (@IdComenter, @IdCategoria, @Fase, @IdUsuario, @Comentario);
+                                       SELECT SCOPE_IDENTITY();";
 
-                    int newId = Convert.ToInt32(cmd.ExecuteScalar());
-                    return Ok(new { message = "Comentario agregado correctamente", id = newId });
+                        using (SqlCommand cmd = new SqlCommand(query, conn, transaction))
+                        {
+                            cmd.Parameters.AddWithValue("@IdComenter", idComenter);
+                            cmd.Parameters.AddWithValue("@IdCategoria", request.IdCategoria);
+                            cmd.Parameters.AddWithValue("@Fase", request.Fase);
+                            cmd.Parameters.AddWithValue("@IdUsuario", request.IdUsuario);
+                            cmd.Parameters.AddWithValue("@Comentario", request.Comentario);
+
+                            int newId = Convert.ToInt32(cmd.ExecuteScalar());
+                            transaction.Commit();
+                            return Ok(new { message = "Comentario agregado correctamente", id = newId });
+                        }
+                    }
+                    catch
+                    {
+                        transaction.Rollback();
+                        throw;
+                    }
                 }
             }
         }
@@ -264,19 +321,18 @@ public class CommenterController : ControllerBase
             using (SqlConnection conn = new SqlConnection(_connectionString))
             {
                 conn.Open();
-                string query = @"UPDATE Commenter
-                               SET IdProy = @IdProy, IdCategoria = @IdCategoria, Fase = @Fase, 
-                                   IdUsuario = @IdUsuario, Comentarios = @Comentarios
+                string query = @"UPDATE Comentarios_comenter
+                               SET IdCategoria = @IdCategoria, Fase = @Fase, 
+                                   IdUsuario = @IdUsuario, Comentario = @Comentario
                                WHERE Id = @Id";
 
                 using (SqlCommand cmd = new SqlCommand(query, conn))
                 {
                     cmd.Parameters.AddWithValue("@Id", id);
-                    cmd.Parameters.AddWithValue("@IdProy", request.IdProy);
                     cmd.Parameters.AddWithValue("@IdCategoria", request.IdCategoria);
                     cmd.Parameters.AddWithValue("@Fase", request.Fase);
                     cmd.Parameters.AddWithValue("@IdUsuario", request.IdUsuario);
-                    cmd.Parameters.AddWithValue("@Comentarios", request.Comentarios ?? (object)DBNull.Value);
+                    cmd.Parameters.AddWithValue("@Comentario", request.Comentario ?? (object)DBNull.Value);
 
                     int rowsAffected = cmd.ExecuteNonQuery();
 
@@ -306,7 +362,7 @@ public class CommenterController : ControllerBase
             {
                 conn.Open();
                 string query = @"SELECT COUNT(*) as CommentCount
-                               FROM Commenter 
+                               FROM Comentarios_comenter 
                                WHERE IdUsuario = @IdUsuario AND IdCategoria = @IdCategoria";
 
                 using (SqlCommand cmd = new SqlCommand(query, conn))
@@ -343,7 +399,7 @@ public class CommenterController : ControllerBase
             try
             {
                 conn.Open();
-                string query = "DELETE FROM Commenter WHERE Id = @Id";
+                string query = "DELETE FROM Comentarios_comenter WHERE Id = @Id";
 
                 using (SqlCommand cmd = new SqlCommand(query, conn))
                 {
@@ -371,20 +427,24 @@ public class CommenterItem
 {
     public int Id { get; set; }
     public int IdProy { get; set; }
+    public int? IdTopico { get; set; }
+    public int? IdCategorizer { get; set; }
     public int IdCategoria { get; set; }
     public int Fase { get; set; }
     public int IdUsuario { get; set; }
-    public string Comentarios { get; set; }
+    public string Comentario { get; set; }
     public string NombreUsuario { get; set; }
 }
 
 public class CommenterRequest
 {
     public int IdProy { get; set; }
+    public int? IdTopico { get; set; }
+    public int? IdCategorizer { get; set; }
     public int IdCategoria { get; set; }
     public int Fase { get; set; }
     public int IdUsuario { get; set; }
-    public string Comentarios { get; set; }
+    public string Comentario { get; set; }
 }
 
 public class CommenterResponse

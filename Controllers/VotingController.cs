@@ -13,7 +13,7 @@ public class VotingController : ControllerBase
 
     public VotingController(ILogger<VotingController> logger)
     {
-        _connectionString = @"Data Source=LAPTOP-7MITNTQF\SQLEXPRESS;Initial Catalog=HerramientasV2;User ID=sa;Password=admin;Encrypt=True;TrustServerCertificate=True";
+        _connectionString = @"Data Source=LAPTOP-7MITNTQF\SQLEXPRESS;Initial Catalog=HerramientasV3;User ID=sa;Password=admin;Encrypt=True;TrustServerCertificate=True";
         _logger = logger;
     }
 
@@ -28,7 +28,7 @@ public class VotingController : ControllerBase
             try
             {
                 conn.Open();
-                string query = "SELECT Id, IdProy, Fases FROM Voting";
+                string query = "SELECT Id, IdProy, IdTopico, IdCategorizer, Fases, MaxVotos FROM Voting";
 
                 using (SqlCommand cmd = new SqlCommand(query, conn))
                 {
@@ -40,7 +40,10 @@ public class VotingController : ControllerBase
                             {
                                 Id = (int)reader["Id"],
                                 IdProy = (int)reader["IdProy"],
-                                Fases = (int)reader["Fases"]
+                                IdTopico = reader["IdTopico"] == DBNull.Value ? (int?)null : (int)reader["IdTopico"],
+                                IdCategorizer = reader["IdCategorizer"] == DBNull.Value ? (int?)null : (int)reader["IdCategorizer"],
+                                Fases = (int)reader["Fases"],
+                                MaxVotos = reader["MaxVotos"] == DBNull.Value ? (int?)null : (int)reader["MaxVotos"]
                             });
                         }
                     }
@@ -65,7 +68,7 @@ public class VotingController : ControllerBase
             try
             {
                 conn.Open();
-                string query = "SELECT Id, IdProy, Fases FROM Voting WHERE Id = @Id";
+                string query = "SELECT Id, IdProy, IdTopico, IdCategorizer, Fases, MaxVotos FROM Voting WHERE Id = @Id";
 
                 using (SqlCommand cmd = new SqlCommand(query, conn))
                 {
@@ -109,7 +112,7 @@ public class VotingController : ControllerBase
             try
             {
                 conn.Open();
-                string query = "SELECT Id, IdProy, Fases FROM Voting WHERE IdProy = @IdProy";
+                string query = "SELECT Id, IdProy, IdTopico, IdCategorizer, Fases, MaxVotos FROM Voting WHERE IdProy = @IdProy";
 
                 using (SqlCommand cmd = new SqlCommand(query, conn))
                 {
@@ -123,7 +126,10 @@ public class VotingController : ControllerBase
                             {
                                 Id = (int)reader["Id"],
                                 IdProy = (int)reader["IdProy"],
-                                Fases = (int)reader["Fases"]
+                                IdTopico = reader["IdTopico"] == DBNull.Value ? (int?)null : (int)reader["IdTopico"],
+                                IdCategorizer = reader["IdCategorizer"] == DBNull.Value ? (int?)null : (int)reader["IdCategorizer"],
+                                Fases = (int)reader["Fases"],
+                                MaxVotos = reader["MaxVotos"] == DBNull.Value ? (int?)null : (int)reader["MaxVotos"]
                             });
                         }
                     }
@@ -174,7 +180,7 @@ public class VotingController : ControllerBase
                 _logger.LogInformation("Conexión a base de datos establecida");
 
                 // Verificar que el proyecto existe
-                string checkProyectoQuery = "SELECT COUNT(*) FROM Proyecto WHERE Id = @IdProy";
+                string checkProyectoQuery = "SELECT COUNT(*) FROM Proyectos WHERE Id = @IdProy";
                 using (SqlCommand checkCmd = new SqlCommand(checkProyectoQuery, conn))
                 {
                     checkCmd.Parameters.AddWithValue("@IdProy", request.IdProy);
@@ -187,14 +193,17 @@ public class VotingController : ControllerBase
                     }
                 }
 
-                string query = @"INSERT INTO Voting (IdProy, Fases) 
-                               VALUES (@IdProy, @Fases);
+                string query = @"INSERT INTO Voting (IdProy, IdTopico, IdCategorizer, Fases, MaxVotos) 
+                               VALUES (@IdProy, @IdTopico, @IdCategorizer, @Fases, @MaxVotos);
                                SELECT SCOPE_IDENTITY();";
 
                 using (SqlCommand cmd = new SqlCommand(query, conn))
                 {
                     cmd.Parameters.AddWithValue("@IdProy", request.IdProy);
+                    cmd.Parameters.AddWithValue("@IdTopico", request.IdTopico ?? (object)DBNull.Value);
+                    cmd.Parameters.AddWithValue("@IdCategorizer", request.IdCategorizer ?? (object)DBNull.Value);
                     cmd.Parameters.AddWithValue("@Fases", request.Fases);
+                    cmd.Parameters.AddWithValue("@MaxVotos", request.MaxVotos ?? (object)DBNull.Value);
 
                     _logger.LogInformation("Ejecutando inserción de sesión de voting");
                     int newId = Convert.ToInt32(cmd.ExecuteScalar());
@@ -227,14 +236,17 @@ public class VotingController : ControllerBase
             {
                 conn.Open();
                 string query = @"UPDATE Voting
-                               SET IdProy = @IdProy, Fases = @Fases
+                               SET IdProy = @IdProy, IdTopico = @IdTopico, IdCategorizer = @IdCategorizer, Fases = @Fases, MaxVotos = @MaxVotos
                                WHERE Id = @Id";
 
                 using (SqlCommand cmd = new SqlCommand(query, conn))
                 {
                     cmd.Parameters.AddWithValue("@Id", id);
                     cmd.Parameters.AddWithValue("@IdProy", request.IdProy);
+                    cmd.Parameters.AddWithValue("@IdTopico", request.IdTopico ?? (object)DBNull.Value);
+                    cmd.Parameters.AddWithValue("@IdCategorizer", request.IdCategorizer ?? (object)DBNull.Value);
                     cmd.Parameters.AddWithValue("@Fases", request.Fases);
+                    cmd.Parameters.AddWithValue("@MaxVotos", request.MaxVotos ?? (object)DBNull.Value);
 
                     int rowsAffected = cmd.ExecuteNonQuery();
 
@@ -611,13 +623,19 @@ public class VotingSession
 {
     public int Id { get; set; }
     public int IdProy { get; set; }
+    public int? IdTopico { get; set; }
+    public int? IdCategorizer { get; set; }
     public int Fases { get; set; }
+    public int? MaxVotos { get; set; }
 }
 
 public class VotingSessionRequest
 {
     public int IdProy { get; set; }
+    public int? IdTopico { get; set; }
+    public int? IdCategorizer { get; set; }
     public int Fases { get; set; }
+    public int? MaxVotos { get; set; }
 }
 
 public class VotingSessionsResponse

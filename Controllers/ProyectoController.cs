@@ -13,7 +13,7 @@ public class ProyectoController : ControllerBase
 
     public ProyectoController(ILogger<ProyectoController> logger)
     {
-        _connectionString = @"Data Source=LAPTOP-7MITNTQF\SQLEXPRESS;Initial Catalog=HerramientasV2;User ID=sa;Password=admin;Encrypt=True;TrustServerCertificate=True";
+        _connectionString = @"Data Source=LAPTOP-7MITNTQF\SQLEXPRESS;Initial Catalog=HerramientasV3;User ID=sa;Password=admin;Encrypt=True;TrustServerCertificate=True";
         _logger = logger;
     }
 
@@ -28,7 +28,7 @@ public class ProyectoController : ControllerBase
             try
             {
                 conn.Open();
-                string query = "SELECT Id, Nombre, Descripcion FROM Proyecto";
+                string query = "SELECT Id, Nombre, Objetivo, FechaInicio, FechaFin, Estatus FROM Proyectos";
 
                 using (SqlCommand cmd = new SqlCommand(query, conn))
                 {
@@ -40,7 +40,10 @@ public class ProyectoController : ControllerBase
                             {
                                 Id = (int)reader["Id"],
                                 Nombre = reader["Nombre"].ToString(),
-                                Descripcion = reader["Descripcion"].ToString()
+                                Objetivo = reader["Objetivo"].ToString(),
+                                FechaInicio = reader["FechaInicio"] == DBNull.Value ? (DateTime?)null : (DateTime)reader["FechaInicio"],
+                                FechaFin = reader["FechaFin"] == DBNull.Value ? (DateTime?)null : (DateTime)reader["FechaFin"],
+                                Estatus = (int)reader["Estatus"]
                             });
                         }
                     }
@@ -65,7 +68,7 @@ public class ProyectoController : ControllerBase
             try
             {
                 conn.Open();
-                string query = "SELECT Id, Nombre, Descripcion FROM Proyecto WHERE Id = @Id";
+                string query = "SELECT Id, Nombre, Objetivo, FechaInicio, FechaFin, Estatus FROM Proyectos WHERE Id = @Id";
 
                 using (SqlCommand cmd = new SqlCommand(query, conn))
                 {
@@ -79,7 +82,10 @@ public class ProyectoController : ControllerBase
                             {
                                 Id = (int)reader["Id"],
                                 Nombre = reader["Nombre"].ToString(),
-                                Descripcion = reader["Descripcion"].ToString()
+                                Objetivo = reader["Objetivo"].ToString(),
+                                FechaInicio = reader["FechaInicio"] == DBNull.Value ? (DateTime?)null : (DateTime)reader["FechaInicio"],
+                                FechaFin = reader["FechaFin"] == DBNull.Value ? (DateTime?)null : (DateTime)reader["FechaFin"],
+                                Estatus = (int)reader["Estatus"]
                             };
                             return Ok(proyecto);
                         }
@@ -114,73 +120,66 @@ public class ProyectoController : ControllerBase
                 return BadRequest(new { error = "El nombre del proyecto es requerido" });
             }
 
-            if (string.IsNullOrEmpty(request.Descripcion))
+            if (string.IsNullOrEmpty(request.Objetivo))
             {
-                return BadRequest(new { error = "La descripción del proyecto es requerida" });
+                return BadRequest(new { error = "El objetivo del proyecto es requerido" });
+            }
+
+            if (request.IdUsu <= 0)
+            {
+                return BadRequest(new { error = "El ID del usuario es requerido" });
             }
 
             using (SqlConnection conn = new SqlConnection(_connectionString))
             {
                 conn.Open();
                 
-                // Iniciar transacción para asegurar que tanto el proyecto como el categorizer se creen
+                // Iniciar transacción para asegurar que tanto el proyecto como la relación proyecto-usuario se creen
                 using (var transaction = conn.BeginTransaction())
                 {
                     try
                     {
                         // Crear el proyecto
-                        string queryProyecto = @"INSERT INTO Proyecto (Nombre, Descripcion) 
-                                               VALUES (@Nombre, @Descripcion);
+                        string queryProyecto = @"INSERT INTO Proyectos (Nombre, Objetivo, FechaInicio, FechaFin, Estatus) 
+                                               VALUES (@Nombre, @Objetivo, @FechaInicio, @FechaFin, @Estatus);
                                                SELECT SCOPE_IDENTITY();";
 
                         int proyectoId;
                         using (SqlCommand cmdProyecto = new SqlCommand(queryProyecto, conn, transaction))
                         {
                             cmdProyecto.Parameters.AddWithValue("@Nombre", request.Nombre);
-                            cmdProyecto.Parameters.AddWithValue("@Descripcion", request.Descripcion);
+                            cmdProyecto.Parameters.AddWithValue("@Objetivo", request.Objetivo);
+                            cmdProyecto.Parameters.AddWithValue("@FechaInicio", request.FechaInicio ?? (object)DBNull.Value);
+                            cmdProyecto.Parameters.AddWithValue("@FechaFin", request.FechaFin ?? (object)DBNull.Value);
+                            cmdProyecto.Parameters.AddWithValue("@Estatus", request.Estatus);
 
                             proyectoId = Convert.ToInt32(cmdProyecto.ExecuteScalar());
                         }
 
-                        // Crear automáticamente una sesión de categorizer para el proyecto con 1 fase
-                        string queryCategorizer = @"INSERT INTO Categorizer (IdProy, Fases) 
-                                                   VALUES (@IdProy, @Fases);
-                                                   SELECT SCOPE_IDENTITY();";
+                        // Insertar en Proyectos_Usuarios con rol FAC (Facilitador)
+                        string queryProyectoUsuario = @"INSERT INTO Proyectos_Usuarios (IdProy, IdUsu, Rol) 
+                                                      VALUES (@IdProy, @IdUsu, @Rol);";
 
-                        int categorizerId;
-                        using (SqlCommand cmdCategorizer = new SqlCommand(queryCategorizer, conn, transaction))
+                        using (SqlCommand cmdProyectoUsuario = new SqlCommand(queryProyectoUsuario, conn, transaction))
                         {
-                            cmdCategorizer.Parameters.AddWithValue("@IdProy", proyectoId);
-                            cmdCategorizer.Parameters.AddWithValue("@Fases", 1);
+                            cmdProyectoUsuario.Parameters.AddWithValue("@IdProy", proyectoId);
+                            cmdProyectoUsuario.Parameters.AddWithValue("@IdUsu", request.IdUsu);
+                            cmdProyectoUsuario.Parameters.AddWithValue("@Rol", "FAC");
 
-                            categorizerId = Convert.ToInt32(cmdCategorizer.ExecuteScalar());
+                            cmdProyectoUsuario.ExecuteNonQuery();
                         }
 
-                        // Crear automáticamente una sesión de voting para el proyecto con 1 fase
-                        string queryVoting = @"INSERT INTO Voting (IdProy, Fases) 
-                                             VALUES (@IdProy, @Fases);
-                                             SELECT SCOPE_IDENTITY();";
-
-                        int votingId;
-                        using (SqlCommand cmdVoting = new SqlCommand(queryVoting, conn, transaction))
-                        {
-                            cmdVoting.Parameters.AddWithValue("@IdProy", proyectoId);
-                            cmdVoting.Parameters.AddWithValue("@Fases", 1);
-
-                            votingId = Convert.ToInt32(cmdVoting.ExecuteScalar());
-                        }
+                        // En V3 ya no se crean automáticamente Categorizer y Voting
+                        // Se crean desde la tabla Agenda según el tema/tópico
 
                         // Confirmar la transacción
                         transaction.Commit();
 
-                        _logger.LogInformation("Proyecto creado exitosamente con ID: {ProyectoId}, Categorizer con ID: {CategorizerId} y Voting con ID: {VotingId}", 
-                            proyectoId, categorizerId, votingId);
+                        _logger.LogInformation("Proyecto creado exitosamente con ID: {ProyectoId}", proyectoId);
 
                         return Ok(new { 
-                            message = "Proyecto creado correctamente con sesiones de categorizer y voting", 
-                            id = proyectoId,
-                            categorizerId = categorizerId,
-                            votingId = votingId
+                            message = "Proyecto creado correctamente", 
+                            id = proyectoId
                         });
                     }
                     catch (Exception ex)
@@ -213,15 +212,18 @@ public class ProyectoController : ControllerBase
             using (SqlConnection conn = new SqlConnection(_connectionString))
             {
                 conn.Open();
-                string query = @"UPDATE Proyecto
-                               SET Nombre = @Nombre, Descripcion = @Descripcion
+                string query = @"UPDATE Proyectos
+                               SET Nombre = @Nombre, Objetivo = @Objetivo, FechaInicio = @FechaInicio, FechaFin = @FechaFin, Estatus = @Estatus
                                WHERE Id = @Id";
 
                 using (SqlCommand cmd = new SqlCommand(query, conn))
                 {
                     cmd.Parameters.AddWithValue("@Id", id);
                     cmd.Parameters.AddWithValue("@Nombre", request.Nombre ?? (object)DBNull.Value);
-                    cmd.Parameters.AddWithValue("@Descripcion", request.Descripcion ?? (object)DBNull.Value);
+                    cmd.Parameters.AddWithValue("@Objetivo", request.Objetivo ?? (object)DBNull.Value);
+                    cmd.Parameters.AddWithValue("@FechaInicio", request.FechaInicio ?? (object)DBNull.Value);
+                    cmd.Parameters.AddWithValue("@FechaFin", request.FechaFin ?? (object)DBNull.Value);
+                    cmd.Parameters.AddWithValue("@Estatus", request.Estatus);
 
                     int rowsAffected = cmd.ExecuteNonQuery();
 
@@ -250,7 +252,7 @@ public class ProyectoController : ControllerBase
             try
             {
                 conn.Open();
-                string query = "DELETE FROM Proyecto WHERE Id = @Id";
+                string query = "DELETE FROM Proyectos WHERE Id = @Id";
 
                 using (SqlCommand cmd = new SqlCommand(query, conn))
                 {
@@ -286,7 +288,7 @@ public class ProyectoController : ControllerBase
                 conn.Open();
 
                 // Contar sesiones de brainstorm
-                string queryBrainstorm = "SELECT COUNT(*) FROM Brainstorm WHERE IdProy = @Id";
+                string queryBrainstorm = "SELECT COUNT(*) FROM Brainstorming WHERE IdProy = @Id";
                 using (SqlCommand cmd = new SqlCommand(queryBrainstorm, conn))
                 {
                     cmd.Parameters.AddWithValue("@Id", id);
@@ -310,7 +312,7 @@ public class ProyectoController : ControllerBase
                 }
 
                 // Contar comentarios
-                string queryComentarios = "SELECT COUNT(*) FROM Commenter WHERE IdProy = @Id";
+                string queryComentarios = "SELECT COUNT(*) FROM Comenter WHERE IdProy = @Id";
                 using (SqlCommand cmd = new SqlCommand(queryComentarios, conn))
                 {
                     cmd.Parameters.AddWithValue("@Id", id);
@@ -340,13 +342,20 @@ public class ProyectoItem
 {
     public int Id { get; set; }
     public string Nombre { get; set; }
-    public string Descripcion { get; set; }
+    public string Objetivo { get; set; }
+    public DateTime? FechaInicio { get; set; }
+    public DateTime? FechaFin { get; set; }
+    public int Estatus { get; set; } // 1=Activo, 2=Cerrado
 }
 
 public class ProyectoRequest
 {
     public string Nombre { get; set; }
-    public string Descripcion { get; set; }
+    public string Objetivo { get; set; }
+    public DateTime? FechaInicio { get; set; }
+    public DateTime? FechaFin { get; set; }
+    public int Estatus { get; set; }
+    public int IdUsu { get; set; } // ID del usuario que crea el proyecto
 }
 
 public class ProyectosResponse

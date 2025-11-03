@@ -13,7 +13,7 @@ public class CategorizerController : ControllerBase
 
     public CategorizerController(ILogger<CategorizerController> logger)
     {
-        _connectionString = @"Data Source=LAPTOP-7MITNTQF\SQLEXPRESS;Initial Catalog=HerramientasV2;User ID=sa;Password=admin;Encrypt=True;TrustServerCertificate=True";
+        _connectionString = @"Data Source=LAPTOP-7MITNTQF\SQLEXPRESS;Initial Catalog=HerramientasV3;User ID=sa;Password=admin;Encrypt=True;TrustServerCertificate=True";
         _logger = logger;
     }
 
@@ -28,7 +28,7 @@ public class CategorizerController : ControllerBase
             try
             {
                 conn.Open();
-                string query = "SELECT Id, IdProy, Fases FROM Categorizer";
+                string query = "SELECT Id, IdProy, IdTopico, IdBrainstorm, Fases FROM Categorizer";
 
                 using (SqlCommand cmd = new SqlCommand(query, conn))
                 {
@@ -40,6 +40,8 @@ public class CategorizerController : ControllerBase
                             {
                                 Id = (int)reader["Id"],
                                 IdProy = (int)reader["IdProy"],
+                                IdTopico = reader["IdTopico"] == DBNull.Value ? (int?)null : (int)reader["IdTopico"],
+                                IdBrainstorm = reader["IdBrainstorm"] == DBNull.Value ? (int?)null : (int)reader["IdBrainstorm"],
                                 Fases = (int)reader["Fases"]
                             });
                         }
@@ -65,7 +67,7 @@ public class CategorizerController : ControllerBase
             try
             {
                 conn.Open();
-                string query = "SELECT Id, IdProy, Fases FROM Categorizer WHERE Id = @Id";
+                string query = "SELECT Id, IdProy, IdTopico, IdBrainstorm, Fases FROM Categorizer WHERE Id = @Id";
 
                 using (SqlCommand cmd = new SqlCommand(query, conn))
                 {
@@ -79,6 +81,8 @@ public class CategorizerController : ControllerBase
                             {
                                 Id = (int)reader["Id"],
                                 IdProy = (int)reader["IdProy"],
+                                IdTopico = reader["IdTopico"] == DBNull.Value ? (int?)null : (int)reader["IdTopico"],
+                                IdBrainstorm = reader["IdBrainstorm"] == DBNull.Value ? (int?)null : (int)reader["IdBrainstorm"],
                                 Fases = (int)reader["Fases"]
                             };
                             return Ok(session);
@@ -109,7 +113,7 @@ public class CategorizerController : ControllerBase
             try
             {
                 conn.Open();
-                string query = "SELECT Id, IdProy, Fases FROM Categorizer WHERE IdProy = @IdProy";
+                string query = "SELECT Id, IdProy, IdTopico, IdBrainstorm, Fases FROM Categorizer WHERE IdProy = @IdProy";
 
                 using (SqlCommand cmd = new SqlCommand(query, conn))
                 {
@@ -123,6 +127,8 @@ public class CategorizerController : ControllerBase
                             {
                                 Id = (int)reader["Id"],
                                 IdProy = (int)reader["IdProy"],
+                                IdTopico = reader["IdTopico"] == DBNull.Value ? (int?)null : (int)reader["IdTopico"],
+                                IdBrainstorm = reader["IdBrainstorm"] == DBNull.Value ? (int?)null : (int)reader["IdBrainstorm"],
                                 Fases = (int)reader["Fases"]
                             });
                         }
@@ -157,13 +163,15 @@ public class CategorizerController : ControllerBase
             using (SqlConnection conn = new SqlConnection(_connectionString))
             {
                 conn.Open();
-                string query = @"INSERT INTO Categorizer (IdProy, Fases) 
-                               VALUES (@IdProy, @Fases);
+                string query = @"INSERT INTO Categorizer (IdProy, IdTopico, IdBrainstorm, Fases) 
+                               VALUES (@IdProy, @IdTopico, @IdBrainstorm, @Fases);
                                SELECT SCOPE_IDENTITY();";
 
                 using (SqlCommand cmd = new SqlCommand(query, conn))
                 {
                     cmd.Parameters.AddWithValue("@IdProy", request.IdProy);
+                    cmd.Parameters.AddWithValue("@IdTopico", request.IdTopico ?? (object)DBNull.Value);
+                    cmd.Parameters.AddWithValue("@IdBrainstorm", request.IdBrainstorm ?? (object)DBNull.Value);
                     cmd.Parameters.AddWithValue("@Fases", request.Fases);
 
                     _logger.LogInformation("Ejecutando query de inserción de sesión");
@@ -196,13 +204,15 @@ public class CategorizerController : ControllerBase
             {
                 conn.Open();
                 string query = @"UPDATE Categorizer
-                               SET IdProy = @IdProy, Fases = @Fases
+                               SET IdProy = @IdProy, IdTopico = @IdTopico, IdBrainstorm = @IdBrainstorm, Fases = @Fases
                                WHERE Id = @Id";
 
                 using (SqlCommand cmd = new SqlCommand(query, conn))
                 {
                     cmd.Parameters.AddWithValue("@Id", id);
                     cmd.Parameters.AddWithValue("@IdProy", request.IdProy);
+                    cmd.Parameters.AddWithValue("@IdTopico", request.IdTopico ?? (object)DBNull.Value);
+                    cmd.Parameters.AddWithValue("@IdBrainstorm", request.IdBrainstorm ?? (object)DBNull.Value);
                     cmd.Parameters.AddWithValue("@Fases", request.Fases);
 
                     int rowsAffected = cmd.ExecuteNonQuery();
@@ -264,7 +274,7 @@ public class CategorizerController : ControllerBase
             try
             {
                 conn.Open();
-                string query = @"SELECT TOP 1 * FROM Categorias_categorizer";
+                string query = @"SELECT TOP 1 * FROM Categorias_Categorizer";
                 
                 using (SqlCommand cmd = new SqlCommand(query, conn))
                 {
@@ -301,7 +311,7 @@ public class CategorizerController : ControllerBase
                     IS_NULLABLE, 
                     CHARACTER_MAXIMUM_LENGTH
                     FROM INFORMATION_SCHEMA.COLUMNS 
-                    WHERE TABLE_NAME = 'Categorias_categorizer'";
+                    WHERE TABLE_NAME = 'Categorias_Categorizer'";
                 
                 using (SqlCommand cmd = new SqlCommand(query, conn))
                 {
@@ -342,7 +352,7 @@ public class CategorizerController : ControllerBase
             using (SqlConnection conn = new SqlConnection(_connectionString))
             {
                 conn.Open();
-                string query = "SELECT Id, IdProy, Fases FROM Categorizer WHERE IdProy = @IdProy";
+                string query = "SELECT Id, IdProy, IdTopico, IdBrainstorm, Fases FROM Categorizer WHERE IdProy = @IdProy";
 
                 using (SqlCommand cmd = new SqlCommand(query, conn))
                 {
@@ -356,6 +366,8 @@ public class CategorizerController : ControllerBase
                             {
                                 Id = (int)reader["Id"],
                                 IdProy = (int)reader["IdProy"],
+                                IdTopico = reader["IdTopico"] == DBNull.Value ? (int?)null : (int)reader["IdTopico"],
+                                IdBrainstorm = reader["IdBrainstorm"] == DBNull.Value ? (int?)null : (int)reader["IdBrainstorm"],
                                 Fases = (int)reader["Fases"]
                             });
                         }
@@ -384,8 +396,8 @@ public class CategorizerController : ControllerBase
             try
             {
                 conn.Open();
-                string query = @"SELECT cc.Id, cc.IdCategorizer, cc.Fase, cc.Categoria, cc.ListaIdeas, c.IdProy
-                               FROM Categorias_categorizer cc
+                string query = @"SELECT cc.Id, cc.IdCategorizer, cc.Fase, cc.Nombre as Categoria, c.IdProy
+                               FROM Categorias_Categorizer cc
                                INNER JOIN Categorizer c ON cc.IdCategorizer = c.Id
                                WHERE c.IdProy = @IdProy";
 
@@ -399,12 +411,10 @@ public class CategorizerController : ControllerBase
                         {
                             response.categorias.Add(new CategoriaItem
                             {
-                                Id = (int)reader["Id"], // Usar el nuevo campo Id autoincremental
+                                Id = (int)reader["Id"],
                                 IdCategorizer = (int)reader["IdCategorizer"],
                                 Fase = (int)reader["Fase"],
-                                Categoria = reader["Categoria"].ToString(),
-                                ListaIdeas = reader["ListaIdeas"].ToString(),
-                                Comentarios = null, // No existe esta columna en la tabla
+                                Nombre = reader["Categoria"].ToString(),
                                 IdProy = (int)reader["IdProy"]
                             });
                         }
@@ -433,8 +443,8 @@ public class CategorizerController : ControllerBase
             try
             {
                 conn.Open();
-                string query = @"SELECT Id, IdCategorizer, Fase, Categoria, ListaIdeas
-                               FROM Categorias_categorizer
+                string query = @"SELECT Id, IdCategorizer, Fase, Nombre
+                               FROM Categorias_Categorizer
                                WHERE IdCategorizer = @IdCategorizer";
 
                 using (SqlCommand cmd = new SqlCommand(query, conn))
@@ -450,8 +460,7 @@ public class CategorizerController : ControllerBase
                                 Id = (int)reader["Id"],
                                 IdCategorizer = (int)reader["IdCategorizer"],
                                 Fase = (int)reader["Fase"],
-                                Categoria = reader["Categoria"].ToString(),
-                                ListaIdeas = reader["ListaIdeas"].ToString()
+                                Nombre = reader["Nombre"].ToString()
                             });
                         }
                     }
@@ -488,13 +497,12 @@ public class CategorizerController : ControllerBase
 
             // Log de cada propiedad del request
             _logger.LogInformation("Fase: {Fase}", request.Fase);
-            _logger.LogInformation("Categoria: '{Categoria}'", request.Categoria ?? "NULL");
-            _logger.LogInformation("ListaIdeas: '{ListaIdeas}'", request.ListaIdeas ?? "NULL");
+            _logger.LogInformation("Nombre: '{Nombre}'", request.Nombre ?? "NULL");
 
-            if (string.IsNullOrEmpty(request.Categoria))
+            if (string.IsNullOrEmpty(request.Nombre))
             {
-                _logger.LogWarning("Categoria es null o vacía");
-                return BadRequest(new { error = "La categoría es requerida" });
+                _logger.LogWarning("Nombre es null o vacío");
+                return BadRequest(new { error = "El nombre de la categoría es requerido" });
             }
 
             // Verificar que el IdCategorizer existe
@@ -518,30 +526,19 @@ public class CategorizerController : ControllerBase
 
                 _logger.LogInformation("IdCategorizer {IdCategorizer} existe, procediendo con la inserción", idCategorizer);
 
-                // Primero intentar con ListaIdeas como string vacío en lugar de NULL
-                string query = @"INSERT INTO Categorias_categorizer (IdCategorizer, Fase, Categoria, ListaIdeas) 
-                               VALUES (@IdCategorizer, @Fase, @Categoria, @ListaIdeas);
+                string query = @"INSERT INTO Categorias_Categorizer (IdCategorizer, Fase, Nombre) 
+                               VALUES (@IdCategorizer, @Fase, @Nombre);
                                SELECT SCOPE_IDENTITY();";
 
                 using (SqlCommand cmd = new SqlCommand(query, conn))
                 {
                     cmd.Parameters.AddWithValue("@IdCategorizer", idCategorizer);
                     cmd.Parameters.AddWithValue("@Fase", request.Fase);
-                    cmd.Parameters.AddWithValue("@Categoria", request.Categoria);
-                    
-                    // Cambiar el manejo de ListaIdeas
-                    if (string.IsNullOrEmpty(request.ListaIdeas))
-                    {
-                        cmd.Parameters.AddWithValue("@ListaIdeas", "");
-                    }
-                    else
-                    {
-                        cmd.Parameters.AddWithValue("@ListaIdeas", request.ListaIdeas);
-                    }
+                    cmd.Parameters.AddWithValue("@Nombre", request.Nombre);
 
                     _logger.LogInformation("Ejecutando query de inserción");
-                    _logger.LogInformation("Parámetros: IdCategorizer={IdCategorizer}, Fase={Fase}, Categoria='{Categoria}', ListaIdeas='{ListaIdeas}'", 
-                        idCategorizer, request.Fase, request.Categoria, request.ListaIdeas ?? "NULL");
+                    _logger.LogInformation("Parámetros: IdCategorizer={IdCategorizer}, Fase={Fase}, Nombre='{Nombre}'", 
+                        idCategorizer, request.Fase, request.Nombre ?? "NULL");
                     
                     int newId = Convert.ToInt32(cmd.ExecuteScalar());
                     
@@ -579,16 +576,15 @@ public class CategorizerController : ControllerBase
             using (SqlConnection conn = new SqlConnection(_connectionString))
             {
                 conn.Open();
-                string query = @"UPDATE Categorias_categorizer
-                               SET Fase = @Fase, Categoria = @Categoria, ListaIdeas = @ListaIdeas
+                string query = @"UPDATE Categorias_Categorizer
+                               SET Fase = @Fase, Nombre = @Nombre
                                WHERE Id = @Id";
 
                 using (SqlCommand cmd = new SqlCommand(query, conn))
                 {
                     cmd.Parameters.AddWithValue("@Id", id);
                     cmd.Parameters.AddWithValue("@Fase", request.Fase);
-                    cmd.Parameters.AddWithValue("@Categoria", request.Categoria ?? (object)DBNull.Value);
-                    cmd.Parameters.AddWithValue("@ListaIdeas", request.ListaIdeas ?? (object)DBNull.Value);
+                    cmd.Parameters.AddWithValue("@Nombre", request.Nombre ?? (object)DBNull.Value);
 
                     int rowsAffected = cmd.ExecuteNonQuery();
 
@@ -617,7 +613,7 @@ public class CategorizerController : ControllerBase
             try
             {
                 conn.Open();
-                string query = "DELETE FROM Categorias_categorizer WHERE Id = @Id";
+                string query = "DELETE FROM Categorias_Categorizer WHERE Id = @Id";
 
                 using (SqlCommand cmd = new SqlCommand(query, conn))
                 {
@@ -652,8 +648,8 @@ public class CategorizerController : ControllerBase
             {
                 conn.Open();
                 string query = @"SELECT ib.Id, ib.IdBrainstorm, ib.IdUsuario, ib.Idea, u.Nombre
-                               FROM Ideas_brainstorm ib
-                               INNER JOIN Brainstorm b ON ib.IdBrainstorm = b.Id
+                               FROM Ideas_Brainstorm ib
+                               INNER JOIN Brainstorming b ON ib.IdBrainstorm = b.Id
                                INNER JOIN Usuarios u ON ib.IdUsuario = u.Id
                                WHERE b.IdProy = @IdProy";
 
@@ -812,11 +808,11 @@ public class CategorizerController : ControllerBase
                         }
 
                         // Obtener todas las categorías de la fase anterior
-                        string getCategoriasQuery = @"SELECT Categoria, ListaIdeas 
-                                                    FROM Categorias_categorizer 
+                        string getCategoriasQuery = @"SELECT Nombre 
+                                                    FROM Categorias_Categorizer 
                                                     WHERE IdCategorizer = @IdCategorizer AND Fase = @FaseAnterior";
                         
-                        var categoriasAnteriores = new List<(string Categoria, string ListaIdeas)>();
+                        var categoriasAnteriores = new List<string>();
                         using (SqlCommand getCmd = new SqlCommand(getCategoriasQuery, conn, transaction))
                         {
                             getCmd.Parameters.AddWithValue("@IdCategorizer", idCategorizer);
@@ -826,27 +822,23 @@ public class CategorizerController : ControllerBase
                             {
                                 while (reader.Read())
                                 {
-                                    categoriasAnteriores.Add((
-                                        reader["Categoria"].ToString(),
-                                        reader["ListaIdeas"].ToString()
-                                    ));
+                                    categoriasAnteriores.Add(reader["Nombre"].ToString());
                                 }
                             }
                         }
 
                         // Duplicar las categorías con la nueva fase
-                        string insertQuery = @"INSERT INTO Categorias_categorizer (IdCategorizer, Fase, Categoria, ListaIdeas) 
-                                             VALUES (@IdCategorizer, @NuevaFase, @Categoria, @ListaIdeas)";
+                        string insertQuery = @"INSERT INTO Categorias_Categorizer (IdCategorizer, Fase, Nombre) 
+                                             VALUES (@IdCategorizer, @NuevaFase, @Nombre)";
                         
                         int categoriasDuplicadas = 0;
-                        foreach (var categoria in categoriasAnteriores)
+                        foreach (var nombreCategoria in categoriasAnteriores)
                         {
                             using (SqlCommand insertCmd = new SqlCommand(insertQuery, conn, transaction))
                             {
                                 insertCmd.Parameters.AddWithValue("@IdCategorizer", idCategorizer);
                                 insertCmd.Parameters.AddWithValue("@NuevaFase", nuevaFase);
-                                insertCmd.Parameters.AddWithValue("@Categoria", categoria.Categoria);
-                                insertCmd.Parameters.AddWithValue("@ListaIdeas", categoria.ListaIdeas ?? "");
+                                insertCmd.Parameters.AddWithValue("@Nombre", nombreCategoria);
                                 
                                 insertCmd.ExecuteNonQuery();
                                 categoriasDuplicadas++;
@@ -897,16 +889,15 @@ public class CategorizerController : ControllerBase
             {
                 conn.Open();
                 
-                string query = @"INSERT INTO Categorias_categorizer (IdCategorizer, Fase, Categoria, ListaIdeas) 
-                               VALUES (@IdCategorizer, @Fase, @Categoria, @ListaIdeas);
+                string query = @"INSERT INTO Categorias_Categorizer (IdCategorizer, Fase, Nombre) 
+                               VALUES (@IdCategorizer, @Fase, @Nombre);
                                SELECT SCOPE_IDENTITY();";
 
                 using (SqlCommand cmd = new SqlCommand(query, conn))
                 {
                     cmd.Parameters.AddWithValue("@IdCategorizer", idCategorizer);
                     cmd.Parameters.AddWithValue("@Fase", request.Fase);
-                    cmd.Parameters.AddWithValue("@Categoria", request.Categoria);
-                    cmd.Parameters.AddWithValue("@ListaIdeas", request.ListaIdeas ?? "");
+                    cmd.Parameters.AddWithValue("@Nombre", request.Nombre ?? "");
 
                     _logger.LogInformation("Ejecutando inserción de prueba");
                     int newId = Convert.ToInt32(cmd.ExecuteScalar());
@@ -926,6 +917,275 @@ public class CategorizerController : ControllerBase
             return StatusCode(500, new { error = ex.Message, details = ex.ToString() });
         }
     }
+
+    // ========== ENDPOINTS PARA IDEAS-CATEGORÍAS ==========
+
+    // Obtener todas las relaciones idea-categoría
+    [HttpGet("ideas-categorias")]
+    public IActionResult GetAllIdeasCategorias()
+    {
+        var response = new IdeasCategoriasResponse();
+
+        using (SqlConnection conn = new SqlConnection(_connectionString))
+        {
+            try
+            {
+                conn.Open();
+                string query = @"SELECT ic.IdCategoria, ic.IdIdea, c.Nombre as NombreCategoria, i.Idea, i.IdUsuario, u.Nombre as NombreUsuario
+                               FROM Ideas_categorias_categorizer ic
+                               INNER JOIN Categorias_Categorizer c ON ic.IdCategoria = c.Id
+                               INNER JOIN Ideas_Brainstorm i ON ic.IdIdea = i.Id
+                               INNER JOIN Usuarios u ON i.IdUsuario = u.Id";
+
+                using (SqlCommand cmd = new SqlCommand(query, conn))
+                {
+                    using (SqlDataReader reader = cmd.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            response.ideasCategorias.Add(new IdeaCategoriaItem
+                            {
+                                IdCategoria = (int)reader["IdCategoria"],
+                                IdIdea = (int)reader["IdIdea"],
+                                NombreCategoria = reader["NombreCategoria"].ToString(),
+                                Idea = reader["Idea"].ToString(),
+                                IdUsuario = (int)reader["IdUsuario"],
+                                NombreUsuario = reader["NombreUsuario"].ToString()
+                            });
+                        }
+                    }
+                }
+
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error al obtener todas las relaciones idea-categoría");
+                return StatusCode(500, new { error = ex.Message });
+            }
+        }
+    }
+
+    // Obtener ideas por categoría
+    [HttpGet("categorias/{idCategoria}/ideas")]
+    public IActionResult GetIdeasByCategoria(int idCategoria)
+    {
+        var response = new IdeasCategoriasResponse();
+
+        using (SqlConnection conn = new SqlConnection(_connectionString))
+        {
+            try
+            {
+                conn.Open();
+                string query = @"SELECT ic.IdCategoria, ic.IdIdea, c.Nombre as NombreCategoria, i.Idea, i.IdUsuario, u.Nombre as NombreUsuario
+                               FROM Ideas_categorias_categorizer ic
+                               INNER JOIN Categorias_Categorizer c ON ic.IdCategoria = c.Id
+                               INNER JOIN Ideas_Brainstorm i ON ic.IdIdea = i.Id
+                               INNER JOIN Usuarios u ON i.IdUsuario = u.Id
+                               WHERE ic.IdCategoria = @IdCategoria";
+
+                using (SqlCommand cmd = new SqlCommand(query, conn))
+                {
+                    cmd.Parameters.AddWithValue("@IdCategoria", idCategoria);
+
+                    using (SqlDataReader reader = cmd.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            response.ideasCategorias.Add(new IdeaCategoriaItem
+                            {
+                                IdCategoria = (int)reader["IdCategoria"],
+                                IdIdea = (int)reader["IdIdea"],
+                                NombreCategoria = reader["NombreCategoria"].ToString(),
+                                Idea = reader["Idea"].ToString(),
+                                IdUsuario = (int)reader["IdUsuario"],
+                                NombreUsuario = reader["NombreUsuario"].ToString()
+                            });
+                        }
+                    }
+                }
+
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error al obtener ideas por categoría: {IdCategoria}", idCategoria);
+                return StatusCode(500, new { error = ex.Message });
+            }
+        }
+    }
+
+    // Obtener categorías por idea
+    [HttpGet("ideas/{idIdea}/categorias")]
+    public IActionResult GetCategoriasByIdea(int idIdea)
+    {
+        var response = new IdeasCategoriasResponse();
+
+        using (SqlConnection conn = new SqlConnection(_connectionString))
+        {
+            try
+            {
+                conn.Open();
+                string query = @"SELECT ic.IdCategoria, ic.IdIdea, c.Nombre as NombreCategoria, i.Idea, i.IdUsuario, u.Nombre as NombreUsuario
+                               FROM Ideas_categorias_categorizer ic
+                               INNER JOIN Categorias_Categorizer c ON ic.IdCategoria = c.Id
+                               INNER JOIN Ideas_Brainstorm i ON ic.IdIdea = i.Id
+                               INNER JOIN Usuarios u ON i.IdUsuario = u.Id
+                               WHERE ic.IdIdea = @IdIdea";
+
+                using (SqlCommand cmd = new SqlCommand(query, conn))
+                {
+                    cmd.Parameters.AddWithValue("@IdIdea", idIdea);
+
+                    using (SqlDataReader reader = cmd.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            response.ideasCategorias.Add(new IdeaCategoriaItem
+                            {
+                                IdCategoria = (int)reader["IdCategoria"],
+                                IdIdea = (int)reader["IdIdea"],
+                                NombreCategoria = reader["NombreCategoria"].ToString(),
+                                Idea = reader["Idea"].ToString(),
+                                IdUsuario = (int)reader["IdUsuario"],
+                                NombreUsuario = reader["NombreUsuario"].ToString()
+                            });
+                        }
+                    }
+                }
+
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error al obtener categorías por idea: {IdIdea}", idIdea);
+                return StatusCode(500, new { error = ex.Message });
+            }
+        }
+    }
+
+    // Agregar idea a categoría
+    [HttpPost("categorias/{idCategoria}/ideas")]
+    public IActionResult AddIdeaToCategoria(int idCategoria, [FromBody] IdeaCategoriaRequest request)
+    {
+        try
+        {
+            if (request == null || request.IdIdea <= 0)
+            {
+                return BadRequest(new { error = "El ID de la idea es requerido y debe ser mayor a 0" });
+            }
+
+            using (SqlConnection conn = new SqlConnection(_connectionString))
+            {
+                conn.Open();
+                
+                // Verificar si ya existe la relación
+                string checkQuery = "SELECT COUNT(*) FROM Ideas_categorias_categorizer WHERE IdCategoria = @IdCategoria AND IdIdea = @IdIdea";
+                using (SqlCommand checkCmd = new SqlCommand(checkQuery, conn))
+                {
+                    checkCmd.Parameters.AddWithValue("@IdCategoria", idCategoria);
+                    checkCmd.Parameters.AddWithValue("@IdIdea", request.IdIdea);
+                    
+                    if ((int)checkCmd.ExecuteScalar() > 0)
+                    {
+                        return BadRequest(new { error = "Esta idea ya está asignada a esta categoría" });
+                    }
+                }
+
+                string query = @"INSERT INTO Ideas_categorias_categorizer (IdCategoria, IdIdea) 
+                               VALUES (@IdCategoria, @IdIdea)";
+
+                using (SqlCommand cmd = new SqlCommand(query, conn))
+                {
+                    cmd.Parameters.AddWithValue("@IdCategoria", idCategoria);
+                    cmd.Parameters.AddWithValue("@IdIdea", request.IdIdea);
+
+                    int rowsAffected = cmd.ExecuteNonQuery();
+                    if (rowsAffected > 0)
+                    {
+                        return Ok(new { message = "Idea agregada a la categoría correctamente" });
+                    }
+                    else
+                    {
+                        return StatusCode(500, new { error = "No se pudo agregar la idea a la categoría" });
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error al agregar idea a categoría");
+            return StatusCode(500, new { error = ex.Message });
+        }
+    }
+
+    // Remover idea de categoría
+    [HttpDelete("categorias/{idCategoria}/ideas/{idIdea}")]
+    public IActionResult RemoveIdeaFromCategoria(int idCategoria, int idIdea)
+    {
+        try
+        {
+            using (SqlConnection conn = new SqlConnection(_connectionString))
+            {
+                conn.Open();
+                string query = "DELETE FROM Ideas_categorias_categorizer WHERE IdCategoria = @IdCategoria AND IdIdea = @IdIdea";
+
+                using (SqlCommand cmd = new SqlCommand(query, conn))
+                {
+                    cmd.Parameters.AddWithValue("@IdCategoria", idCategoria);
+                    cmd.Parameters.AddWithValue("@IdIdea", idIdea);
+
+                    int rowsAffected = cmd.ExecuteNonQuery();
+
+                    if (rowsAffected == 0)
+                    {
+                        return NotFound(new { error = "No se encontró la relación idea-categoría para eliminar" });
+                    }
+
+                    return Ok(new { message = "Idea removida de la categoría correctamente" });
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error al remover idea de categoría");
+            return StatusCode(500, new { error = ex.Message });
+        }
+    }
+
+    // Verificar si una idea está en una categoría
+    [HttpGet("categorias/{idCategoria}/ideas/{idIdea}/check")]
+    public IActionResult CheckIdeaInCategoria(int idCategoria, int idIdea)
+    {
+        using (SqlConnection conn = new SqlConnection(_connectionString))
+        {
+            try
+            {
+                conn.Open();
+                string query = "SELECT COUNT(*) as Count FROM Ideas_categorias_categorizer WHERE IdCategoria = @IdCategoria AND IdIdea = @IdIdea";
+
+                using (SqlCommand cmd = new SqlCommand(query, conn))
+                {
+                    cmd.Parameters.AddWithValue("@IdCategoria", idCategoria);
+                    cmd.Parameters.AddWithValue("@IdIdea", idIdea);
+
+                    int count = (int)cmd.ExecuteScalar();
+                    bool exists = count > 0;
+
+                    return Ok(new { 
+                        exists = exists,
+                        count = count,
+                        message = exists ? "La idea está en esta categoría" : "La idea no está en esta categoría"
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error al verificar idea en categoría");
+                return StatusCode(500, new { error = ex.Message });
+            }
+        }
+    }
 }
 
 // Clases para sesiones de categorizer
@@ -933,12 +1193,16 @@ public class CategorizerSession
 {
     public int Id { get; set; }
     public int IdProy { get; set; }
+    public int? IdTopico { get; set; }
+    public int? IdBrainstorm { get; set; }
     public int Fases { get; set; }
 }
 
 public class CategorizerSessionRequest
 {
     public int IdProy { get; set; }
+    public int? IdTopico { get; set; }
+    public int? IdBrainstorm { get; set; }
     public int Fases { get; set; }
 }
 
@@ -953,17 +1217,14 @@ public class CategoriaItem
     public int Id { get; set; }
     public int IdCategorizer { get; set; }
     public int Fase { get; set; }
-    public string? Categoria { get; set; }
-    public string? ListaIdeas { get; set; }
-    public string? Comentarios { get; set; }
+    public string? Nombre { get; set; }
     public int IdProy { get; set; }
 }
 
 public class CategoriaRequest
 {
     public int Fase { get; set; }
-    public string? Categoria { get; set; }
-    public string? ListaIdeas { get; set; }
+    public string? Nombre { get; set; }
 }
 
 public class CategoriasResponse
@@ -984,4 +1245,26 @@ public class IdeaItem
 public class IdeasResponse
 {
     public List<IdeaItem> ideas { get; set; } = new List<IdeaItem>();
+}
+
+// Clases para ideas-categorías
+public class IdeaCategoriaItem
+{
+    public int IdCategoria { get; set; }
+    public int IdIdea { get; set; }
+    public string NombreCategoria { get; set; }
+    public string Idea { get; set; }
+    public int IdUsuario { get; set; }
+    public string NombreUsuario { get; set; }
+}
+
+public class IdeaCategoriaRequest
+{
+    public int IdCategoria { get; set; }
+    public int IdIdea { get; set; }
+}
+
+public class IdeasCategoriasResponse
+{
+    public List<IdeaCategoriaItem> ideasCategorias { get; set; } = new List<IdeaCategoriaItem>();
 }

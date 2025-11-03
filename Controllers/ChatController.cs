@@ -16,7 +16,7 @@ public class ChatController : ControllerBase
 
     public ChatController(IHubContext<ChatHub> hubContext, IConfiguration configuration, ILogger<ChatController> logger)
     {
-        _connectionString = @"Data Source=LAPTOP-7MITNTQF\SQLEXPRESS;Initial Catalog=HerramientasV2;User ID=sa;Password=admin;Encrypt=True;TrustServerCertificate=True";
+        _connectionString = @"Data Source=LAPTOP-7MITNTQF\SQLEXPRESS;Initial Catalog=HerramientasV3;User ID=sa;Password=admin;Encrypt=True;TrustServerCertificate=True";
         _hubContext = hubContext;
         _logger = logger;
     }
@@ -32,7 +32,7 @@ public class ChatController : ControllerBase
             try
             {
                 conn.Open();
-                string query = "SELECT Id, IdProy, Titulo, Descripcion FROM Chat";
+                string query = "SELECT Id, IdProy, IdTopico, Titulo, Descripcion FROM Chat";
 
                 using (SqlCommand cmd = new SqlCommand(query, conn))
                 {
@@ -44,6 +44,7 @@ public class ChatController : ControllerBase
                             {
                                 Id = (int)reader["Id"],
                                 IdProy = (int)reader["IdProy"],
+                                IdTopico = reader["IdTopico"] == DBNull.Value ? (int?)null : (int)reader["IdTopico"],
                                 Titulo = reader["Titulo"].ToString(),
                                 Descripcion = reader["Descripcion"].ToString()
                             });
@@ -70,7 +71,7 @@ public class ChatController : ControllerBase
             try
             {
                 conn.Open();
-                string query = "SELECT Id, IdProy, Titulo, Descripcion FROM Chat WHERE Id = @Id";
+                string query = "SELECT Id, IdProy, IdTopico, Titulo, Descripcion FROM Chat WHERE Id = @Id";
 
                 using (SqlCommand cmd = new SqlCommand(query, conn))
                 {
@@ -84,6 +85,7 @@ public class ChatController : ControllerBase
                             {
                                 Id = (int)reader["Id"],
                                 IdProy = (int)reader["IdProy"],
+                                IdTopico = reader["IdTopico"] == DBNull.Value ? (int?)null : (int)reader["IdTopico"],
                                 Titulo = reader["Titulo"].ToString(),
                                 Descripcion = reader["Descripcion"].ToString()
                             };
@@ -115,7 +117,7 @@ public class ChatController : ControllerBase
             try
             {
                 conn.Open();
-                string query = "SELECT Id, IdProy, Titulo, Descripcion FROM Chat WHERE IdProy = @IdProy";
+                string query = "SELECT Id, IdProy, IdTopico, Titulo, Descripcion FROM Chat WHERE IdProy = @IdProy";
 
                 using (SqlCommand cmd = new SqlCommand(query, conn))
                 {
@@ -129,6 +131,7 @@ public class ChatController : ControllerBase
                             {
                                 Id = (int)reader["Id"],
                                 IdProy = (int)reader["IdProy"],
+                                IdTopico = reader["IdTopico"] == DBNull.Value ? (int?)null : (int)reader["IdTopico"],
                                 Titulo = reader["Titulo"].ToString(),
                                 Descripcion = reader["Descripcion"].ToString()
                             });
@@ -170,13 +173,14 @@ public class ChatController : ControllerBase
             using (SqlConnection conn = new SqlConnection(_connectionString))
             {
                 conn.Open();
-                string query = @"INSERT INTO Chat (IdProy, Titulo, Descripcion) 
-                               VALUES (@IdProy, @Titulo, @Descripcion);
+                string query = @"INSERT INTO Chat (IdProy, IdTopico, Titulo, Descripcion) 
+                               VALUES (@IdProy, @IdTopico, @Titulo, @Descripcion);
                                SELECT SCOPE_IDENTITY();";
 
                 using (SqlCommand cmd = new SqlCommand(query, conn))
                 {
                     cmd.Parameters.AddWithValue("@IdProy", request.IdProy);
+                    cmd.Parameters.AddWithValue("@IdTopico", request.IdTopico ?? (object)DBNull.Value);
                     cmd.Parameters.AddWithValue("@Titulo", request.Titulo);
                     cmd.Parameters.AddWithValue("@Descripcion", request.Descripcion);
 
@@ -207,13 +211,14 @@ public class ChatController : ControllerBase
             {
                 conn.Open();
                 string query = @"UPDATE Chat
-                               SET IdProy = @IdProy, Titulo = @Titulo, Descripcion = @Descripcion
+                               SET IdProy = @IdProy, IdTopico = @IdTopico, Titulo = @Titulo, Descripcion = @Descripcion
                                WHERE Id = @Id";
 
                 using (SqlCommand cmd = new SqlCommand(query, conn))
                 {
                     cmd.Parameters.AddWithValue("@Id", id);
                     cmd.Parameters.AddWithValue("@IdProy", request.IdProy);
+                    cmd.Parameters.AddWithValue("@IdTopico", request.IdTopico ?? (object)DBNull.Value);
                     cmd.Parameters.AddWithValue("@Titulo", request.Titulo ?? (object)DBNull.Value);
                     cmd.Parameters.AddWithValue("@Descripcion", request.Descripcion ?? (object)DBNull.Value);
 
@@ -387,6 +392,7 @@ public class ChatSession
 {
     public int Id { get; set; }
     public int IdProy { get; set; }
+    public int? IdTopico { get; set; }
     public string Titulo { get; set; }
     public string Descripcion { get; set; }
 }
@@ -394,6 +400,7 @@ public class ChatSession
 public class ChatSessionRequest
 {
     public int IdProy { get; set; }
+    public int? IdTopico { get; set; }
     public string Titulo { get; set; }
     public string Descripcion { get; set; }
 }
