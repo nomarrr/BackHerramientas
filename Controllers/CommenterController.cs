@@ -421,6 +421,106 @@ public class CommenterController : ControllerBase
             }
         }
     }
+
+    // Crear sesión de Commenter (similar a otras herramientas)
+    [HttpPost("session")]
+    public IActionResult CreateCommenterSession([FromBody] CommenterSessionRequest request)
+    {
+        try
+        {
+            _logger.LogInformation("=== Creando sesión de Commenter ===");
+            _logger.LogInformation("Request recibido: {@Request}", request);
+            
+            if (request == null)
+            {
+                _logger.LogWarning("Request es null");
+                return BadRequest(new { error = "La solicitud no puede estar vacía" });
+            }
+
+            // Validar que IdProy sea válido
+            if (request.IdProy <= 0)
+            {
+                _logger.LogWarning("IdProy inválido: {IdProy}", request.IdProy);
+                return BadRequest(new { error = "El ID del proyecto debe ser mayor a 0" });
+            }
+
+            using (SqlConnection conn = new SqlConnection(_connectionString))
+            {
+                conn.Open();
+
+                // Verificar que el proyecto existe
+                string checkProyectoQuery = "SELECT COUNT(*) FROM Proyectos WHERE Id = @IdProy";
+                using (SqlCommand checkCmd = new SqlCommand(checkProyectoQuery, conn))
+                {
+                    checkCmd.Parameters.AddWithValue("@IdProy", request.IdProy);
+                    int proyectoExists = (int)checkCmd.ExecuteScalar();
+                    
+                    if (proyectoExists == 0)
+                    {
+                        _logger.LogError("Proyecto con ID {IdProy} no existe", request.IdProy);
+                        return BadRequest(new { error = $"El proyecto con ID {request.IdProy} no existe" });
+                    }
+                }
+
+                // Verificar si ya existe una sesión de Commenter con estos parámetros
+                string queryCheck = @"SELECT Id FROM Comenter 
+                                    WHERE IdProy = @IdProy 
+                                      AND (IdTopico = @IdTopico OR (IdTopico IS NULL AND @IdTopico IS NULL))
+                                      AND (IdCategorizer = @IdCategorizer OR (IdCategorizer IS NULL AND @IdCategorizer IS NULL))";
+                
+                using (SqlCommand checkCmd = new SqlCommand(queryCheck, conn))
+                {
+                    checkCmd.Parameters.AddWithValue("@IdProy", request.IdProy);
+                    checkCmd.Parameters.AddWithValue("@IdTopico", request.IdTopico ?? (object)DBNull.Value);
+                    checkCmd.Parameters.AddWithValue("@IdCategorizer", request.IdCategorizer ?? (object)DBNull.Value);
+                    
+                    var existingId = checkCmd.ExecuteScalar();
+                    if (existingId != null && existingId != DBNull.Value)
+                    {
+                        int idComenter = (int)existingId;
+                        _logger.LogInformation("Sesión de Commenter ya existe con ID: {IdComenter}", idComenter);
+                        return Ok(new { message = "Sesión de Commenter ya existe", id = idComenter });
+                    }
+                }
+
+                // Crear nueva sesión de Commenter
+                _logger.LogInformation("Creando nueva sesión de Commenter con IdProy: {IdProy}, IdTopico: {IdTopico}, IdCategorizer: {IdCategorizer}", 
+                    request.IdProy, request.IdTopico, request.IdCategorizer);
+                
+                string query = @"INSERT INTO Comenter (IdProy, IdTopico, IdCategorizer) 
+                               VALUES (@IdProy, @IdTopico, @IdCategorizer);
+                               SELECT SCOPE_IDENTITY();";
+
+                using (SqlCommand cmd = new SqlCommand(query, conn))
+                {
+                    cmd.Parameters.AddWithValue("@IdProy", request.IdProy);
+                    cmd.Parameters.AddWithValue("@IdTopico", request.IdTopico ?? (object)DBNull.Value);
+                    cmd.Parameters.AddWithValue("@IdCategorizer", request.IdCategorizer ?? (object)DBNull.Value);
+
+                    _logger.LogInformation("Ejecutando INSERT en Comenter");
+                    var result = cmd.ExecuteScalar();
+                    _logger.LogInformation("Resultado de ExecuteScalar: {Result}", result);
+                    
+                    if (result != null && result != DBNull.Value)
+                    {
+                        int newId = Convert.ToInt32(result);
+                        _logger.LogInformation("Sesión de Commenter creada exitosamente con ID: {NewId}", newId);
+                        return Ok(new { message = "Sesión de Commenter creada correctamente", id = newId });
+                    }
+                    else
+                    {
+                        _logger.LogError("No se obtuvo ID de la inserción");
+                        return StatusCode(500, new { error = "No se pudo obtener el ID de la sesión creada" });
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error al crear sesión de Commenter");
+            return StatusCode(500, new { error = ex.Message });
+        }
+    }
 }
 
 public class CommenterItem
@@ -450,4 +550,11 @@ public class CommenterRequest
 public class CommenterResponse
 {
     public List<CommenterItem> comments { get; set; } = new List<CommenterItem>();
+}
+
+public class CommenterSessionRequest
+{
+    public int IdProy { get; set; }
+    public int? IdTopico { get; set; }
+    public int? IdCategorizer { get; set; }
 } 
