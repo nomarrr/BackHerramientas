@@ -13,7 +13,7 @@ public class CriteriosController : ControllerBase
 
     public CriteriosController(ILogger<CriteriosController> logger)
     {
-        _connectionString = @"Data Source=LAPTOP-7MITNTQF\SQLEXPRESS;Initial Catalog=HerramientasV3;User ID=sa;Password=admin;Encrypt=True;TrustServerCertificate=True";
+         _connectionString = "Server=.;Database=HerramientasV3;Integrated Security=True;TrustServerCertificate=True";
         _logger = logger;
     }
 

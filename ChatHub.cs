@@ -12,7 +12,7 @@ public class ChatHub : Hub
 
     public ChatHub(IConfiguration configuration, ILogger<ChatHub> logger)
     {
-        _connectionString = @"Data Source=LAPTOP-7MITNTQF\SQLEXPRESS;Initial Catalog=HerramientasV3;User ID=sa;Password=admin;Encrypt=True;TrustServerCertificate=True";
+        _connectionString = "Server=DESKTOP-N7HILThpc;Database=HerramientasV3;Integrated Security=True;TrustServerCertificate=True";
         _logger = logger;
     }
 
