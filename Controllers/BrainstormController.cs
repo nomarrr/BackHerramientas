@@ -162,11 +162,6 @@ public class BrainstormController : ControllerBase
                 return BadRequest(new { error = "La solicitud no puede estar vacía" });
             }
 
-            if (string.IsNullOrEmpty(request.Titulo))
-            {
-                return BadRequest(new { error = "El título es requerido" });
-            }
-
             if (string.IsNullOrEmpty(request.Descripcion))
             {
                 return BadRequest(new { error = "La descripción es requerida" });
@@ -183,7 +178,7 @@ public class BrainstormController : ControllerBase
                 {
                     cmd.Parameters.AddWithValue("@IdProy", request.IdProy);
                     cmd.Parameters.AddWithValue("@IdTopico", request.IdTopico ?? (object)DBNull.Value);
-                    cmd.Parameters.AddWithValue("@Titulo", request.Titulo);
+                    cmd.Parameters.AddWithValue("@Titulo", request.Titulo ?? (object)DBNull.Value);
                     cmd.Parameters.AddWithValue("@Descripcion", request.Descripcion);
                     cmd.Parameters.AddWithValue("@MiniIdeas", request.MiniIdeas);
                     cmd.Parameters.AddWithValue("@MaxIdeas", request.MaxIdeas);
@@ -802,7 +797,7 @@ public class BrainstormSessionRequest
 {
     public int IdProy { get; set; }
     public int? IdTopico { get; set; }
-    public string Titulo { get; set; }
+    public string? Titulo { get; set; }
     public string Descripcion { get; set; }
     public int MiniIdeas { get; set; }
     public int MaxIdeas { get; set; }

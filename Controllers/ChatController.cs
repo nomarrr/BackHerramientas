@@ -160,11 +160,6 @@ public class ChatController : ControllerBase
                 return BadRequest(new { error = "La solicitud no puede estar vacía" });
             }
 
-            if (string.IsNullOrEmpty(request.Titulo))
-            {
-                return BadRequest(new { error = "El título es requerido" });
-            }
-
             if (string.IsNullOrEmpty(request.Descripcion))
             {
                 return BadRequest(new { error = "La descripción es requerida" });
@@ -181,7 +176,7 @@ public class ChatController : ControllerBase
                 {
                     cmd.Parameters.AddWithValue("@IdProy", request.IdProy);
                     cmd.Parameters.AddWithValue("@IdTopico", request.IdTopico ?? (object)DBNull.Value);
-                    cmd.Parameters.AddWithValue("@Titulo", request.Titulo);
+                    cmd.Parameters.AddWithValue("@Titulo", request.Titulo ?? (object)DBNull.Value);
                     cmd.Parameters.AddWithValue("@Descripcion", request.Descripcion);
 
                     int newId = Convert.ToInt32(cmd.ExecuteScalar());
@@ -283,9 +278,11 @@ public class ChatController : ControllerBase
             try
             {
                 conn.Open();
-                string query = @"SELECT mc.IdChat, mc.IdUsuario, mc.Fecha, mc.Hora, mc.Mensaje, u.Nombre
+                string query = @"SELECT mc.IdChat, mc.IdUsuario, mc.Fecha, mc.Hora, mc.Mensaje, u.Nombre, pu.Rol
                                FROM Mensajes_chat mc
                                INNER JOIN Usuarios u ON mc.IdUsuario = u.Id
+                               INNER JOIN Chat c ON mc.IdChat = c.Id
+                               LEFT JOIN Proyectos_Usuarios pu ON c.IdProy = pu.IdProy AND mc.IdUsuario = pu.IdUsu
                                WHERE mc.IdChat = @IdChat
                                ORDER BY mc.Fecha, mc.Hora";
 
@@ -304,7 +301,8 @@ public class ChatController : ControllerBase
                                 Fecha = (DateTime)reader["Fecha"],
                                 Hora = (TimeSpan)reader["Hora"],
                                 Mensaje = reader["Mensaje"].ToString(),
-                                NombreUsuario = reader["Nombre"].ToString()
+                                NombreUsuario = reader["Nombre"].ToString(),
+                                Rol = reader["Rol"] != DBNull.Value ? reader["Rol"].ToString() : null
                             });
                         }
                     }
@@ -364,8 +362,13 @@ public class ChatController : ControllerBase
                         }
                     }
 
-                    // Enviar mensaje por SignalR
-                    await _hubContext.Clients.All.SendAsync("ReceiveMessage", nombreUsuario, request.Mensaje);
+                    // Enviar mensaje por SignalR con toda la información
+                    await _hubContext.Clients.All.SendAsync("ReceiveMessageWithId", new {
+                        usuario = nombreUsuario,
+                        texto = request.Mensaje,
+                        idUsuario = request.IdUsuario,
+                        fecha = DateTime.Now.ToString("o")
+                    });
 
                     return Ok(new { message = "Mensaje enviado correctamente", id = newId });
                 }
@@ -401,11 +404,9 @@ public class ChatSessionRequest
 {
     public int IdProy { get; set; }
     public int? IdTopico { get; set; }
-    public string Titulo { get; set; }
+    public string? Titulo { get; set; }
     public string Descripcion { get; set; }
-}
-
-public class ChatSessionsResponse
+}public class ChatSessionsResponse
 {
     public List<ChatSession> sessions { get; set; } = new List<ChatSession>();
 }
@@ -419,6 +420,7 @@ public class ChatMensaje
     public TimeSpan Hora { get; set; }
     public string Mensaje { get; set; }
     public string NombreUsuario { get; set; }
+    public string Rol { get; set; }
 }
 
 public class ChatMensajeRequest

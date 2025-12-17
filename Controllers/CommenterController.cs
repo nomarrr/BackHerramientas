@@ -521,6 +521,50 @@ public class CommenterController : ControllerBase
             return StatusCode(500, new { error = ex.Message });
         }
     }
+
+    // Obtener sesiones de Commenter por proyecto
+    [HttpGet("sessions/byproy/{idProy}")]
+    public IActionResult GetCommenterSessionsByProy(int idProy)
+    {
+        var response = new CommenterSessionsResponse();
+
+        using (SqlConnection conn = new SqlConnection(_connectionString))
+        {
+            try
+            {
+                conn.Open();
+                string query = @"SELECT Id, IdProy, IdTopico, IdCategorizer
+                               FROM Comenter
+                               WHERE IdProy = @IdProy";
+
+                using (SqlCommand cmd = new SqlCommand(query, conn))
+                {
+                    cmd.Parameters.AddWithValue("@IdProy", idProy);
+
+                    using (SqlDataReader reader = cmd.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            response.sessions.Add(new CommenterSession
+                            {
+                                Id = (int)reader["Id"],
+                                IdProy = (int)reader["IdProy"],
+                                IdTopico = reader["IdTopico"] == DBNull.Value ? (int?)null : (int)reader["IdTopico"],
+                                IdCategorizer = reader["IdCategorizer"] == DBNull.Value ? (int?)null : (int)reader["IdCategorizer"]
+                            });
+                        }
+                    }
+                }
+
+                return Ok(response);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error al obtener sesiones de Commenter por proyecto: {IdProy}", idProy);
+                return StatusCode(500, new { error = ex.Message });
+            }
+        }
+    }
 }
 
 public class CommenterItem
@@ -557,4 +601,17 @@ public class CommenterSessionRequest
     public int IdProy { get; set; }
     public int? IdTopico { get; set; }
     public int? IdCategorizer { get; set; }
+}
+
+public class CommenterSession
+{
+    public int Id { get; set; }
+    public int IdProy { get; set; }
+    public int? IdTopico { get; set; }
+    public int? IdCategorizer { get; set; }
+}
+
+public class CommenterSessionsResponse
+{
+    public List<CommenterSession> sessions { get; set; } = new List<CommenterSession>();
 } 

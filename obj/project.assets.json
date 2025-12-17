@@ -4718,11 +4718,11 @@
   "project": {
     "version": "1.0.0",
     "restore": {
-      "projectUniqueName": "C:\\Users\\nomar\\OneDrive\\Documentos\\GitHub\\BackHerramientas\\BackHerramientas.csproj",
+      "projectUniqueName": "C:\\Users\\nomar\\OneDrive\\Escritorio\\HerramientasClaude\\BackHerramientas\\BackHerramientas.csproj",
       "projectName": "BackHerramientas",
-      "projectPath": "C:\\Users\\nomar\\OneDrive\\Documentos\\GitHub\\BackHerramientas\\BackHerramientas.csproj",
+      "projectPath": "C:\\Users\\nomar\\OneDrive\\Escritorio\\HerramientasClaude\\BackHerramientas\\BackHerramientas.csproj",
       "packagesPath": "C:\\Users\\nomar\\.nuget\\packages\\",
-      "outputPath": "C:\\Users\\nomar\\OneDrive\\Documentos\\GitHub\\BackHerramientas\\obj\\",
+      "outputPath": "C:\\Users\\nomar\\OneDrive\\Escritorio\\HerramientasClaude\\BackHerramientas\\obj\\",
       "projectStyle": "PackageReference",
       "fallbackFolders": [
         "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"

@@ -82,7 +82,10 @@ public class VotingController : ControllerBase
                             {
                                 Id = (int)reader["Id"],
                                 IdProy = (int)reader["IdProy"],
-                                Fases = (int)reader["Fases"]
+                                IdTopico = reader["IdTopico"] == DBNull.Value ? (int?)null : (int)reader["IdTopico"],
+                                IdCategorizer = reader["IdCategorizer"] == DBNull.Value ? (int?)null : (int)reader["IdCategorizer"],
+                                Fases = (int)reader["Fases"],
+                                MaxVotos = reader["MaxVotos"] == DBNull.Value ? (int?)null : (int)reader["MaxVotos"]
                             };
                             return Ok(session);
                         }

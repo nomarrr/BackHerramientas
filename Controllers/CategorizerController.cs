@@ -396,12 +396,14 @@ public class CategorizerController : ControllerBase
             try
             {
                 conn.Open();
-                string query = @"SELECT cc.Id, cc.IdCategorizer, cc.Fase, cc.Nombre as Categoria, c.IdProy
-                               FROM Categorias_Categorizer cc
-                               INNER JOIN Categorizer c ON cc.IdCategorizer = c.Id
-                               WHERE c.IdProy = @IdProy";
 
-                using (SqlCommand cmd = new SqlCommand(query, conn))
+                // Primero obtener las categorías
+                string queryCateg = @"SELECT cc.Id, cc.IdCategorizer, cc.Fase, cc.Nombre, c.IdProy
+                                    FROM Categorias_Categorizer cc
+                                    INNER JOIN Categorizer c ON cc.IdCategorizer = c.Id
+                                    WHERE c.IdProy = @IdProy";
+
+                using (SqlCommand cmd = new SqlCommand(queryCateg, conn))
                 {
                     cmd.Parameters.AddWithValue("@IdProy", idProy);
 
@@ -414,10 +416,35 @@ public class CategorizerController : ControllerBase
                                 Id = (int)reader["Id"],
                                 IdCategorizer = (int)reader["IdCategorizer"],
                                 Fase = (int)reader["Fase"],
-                                Nombre = reader["Categoria"].ToString(),
+                                Nombre = reader["Nombre"].ToString(),
                                 IdProy = (int)reader["IdProy"]
                             });
                         }
+                    }
+                }
+
+                // Ahora obtener las ideas asociadas a cada categoría desde la tabla de relación
+                foreach (var categoria in response.categorias)
+                {
+                    string queryIdeas = @"SELECT IdIdea
+                                        FROM Ideas_categorias_categorizer
+                                        WHERE IdCategoria = @IdCategoria";
+
+                    using (SqlCommand cmd = new SqlCommand(queryIdeas, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@IdCategoria", categoria.Id);
+
+                        var ideas = new List<int>();
+                        using (SqlDataReader reader = cmd.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                ideas.Add((int)reader["IdIdea"]);
+                            }
+                        }
+
+                        // Convertir a string separado por comas (para compatibilidad con frontend)
+                        categoria.ListaIdeas = ideas.Count > 0 ? string.Join(",", ideas) : null;
                     }
                 }
 
@@ -443,11 +470,13 @@ public class CategorizerController : ControllerBase
             try
             {
                 conn.Open();
-                string query = @"SELECT Id, IdCategorizer, Fase, Nombre
-                               FROM Categorias_Categorizer
-                               WHERE IdCategorizer = @IdCategorizer";
 
-                using (SqlCommand cmd = new SqlCommand(query, conn))
+                // Primero obtener las categorías
+                string queryCateg = @"SELECT Id, IdCategorizer, Fase, Nombre
+                                    FROM Categorias_Categorizer
+                                    WHERE IdCategorizer = @IdCategorizer";
+
+                using (SqlCommand cmd = new SqlCommand(queryCateg, conn))
                 {
                     cmd.Parameters.AddWithValue("@IdCategorizer", idCategorizer);
 
@@ -463,6 +492,31 @@ public class CategorizerController : ControllerBase
                                 Nombre = reader["Nombre"].ToString()
                             });
                         }
+                    }
+                }
+
+                // Ahora obtener las ideas asociadas a cada categoría desde la tabla de relación
+                foreach (var categoria in response.categorias)
+                {
+                    string queryIdeas = @"SELECT IdIdea
+                                        FROM Ideas_categorias_categorizer
+                                        WHERE IdCategoria = @IdCategoria";
+
+                    using (SqlCommand cmd = new SqlCommand(queryIdeas, conn))
+                    {
+                        cmd.Parameters.AddWithValue("@IdCategoria", categoria.Id);
+
+                        var ideas = new List<int>();
+                        using (SqlDataReader reader = cmd.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                ideas.Add((int)reader["IdIdea"]);
+                            }
+                        }
+
+                        // Convertir a string separado por comas (para compatibilidad con frontend)
+                        categoria.ListaIdeas = ideas.Count > 0 ? string.Join(",", ideas) : null;
                     }
                 }
 
@@ -564,7 +618,7 @@ public class CategorizerController : ControllerBase
 
     // Actualizar categoría
     [HttpPut("categorias/{id}")]
-    public IActionResult UpdateCategoria(int id, [FromBody] CategoriaRequest request)
+    public IActionResult UpdateCategoria(int id, [FromBody] CategoriaUpdateRequest request)
     {
         try
         {
@@ -576,24 +630,73 @@ public class CategorizerController : ControllerBase
             using (SqlConnection conn = new SqlConnection(_connectionString))
             {
                 conn.Open();
-                string query = @"UPDATE Categorias_Categorizer
-                               SET Fase = @Fase, Nombre = @Nombre
-                               WHERE Id = @Id";
 
-                using (SqlCommand cmd = new SqlCommand(query, conn))
+                // Iniciar transacción para asegurar consistencia
+                using (SqlTransaction transaction = conn.BeginTransaction())
                 {
-                    cmd.Parameters.AddWithValue("@Id", id);
-                    cmd.Parameters.AddWithValue("@Fase", request.Fase);
-                    cmd.Parameters.AddWithValue("@Nombre", request.Nombre ?? (object)DBNull.Value);
-
-                    int rowsAffected = cmd.ExecuteNonQuery();
-
-                    if (rowsAffected == 0)
+                    try
                     {
-                        return NotFound(new { error = $"No se encontró la categoría con ID {id}" });
-                    }
+                        // 1. Actualizar nombre y fase de la categoría
+                        string queryUpdate = @"UPDATE Categorias_Categorizer
+                                             SET Fase = @Fase, Nombre = @Nombre
+                                             WHERE Id = @Id";
 
-                    return Ok(new { message = "Categoría actualizada correctamente", id = id });
+                        using (SqlCommand cmd = new SqlCommand(queryUpdate, conn, transaction))
+                        {
+                            cmd.Parameters.AddWithValue("@Id", id);
+                            cmd.Parameters.AddWithValue("@Fase", request.Fase);
+                            cmd.Parameters.AddWithValue("@Nombre", request.Nombre ?? (object)DBNull.Value);
+
+                            int rowsAffected = cmd.ExecuteNonQuery();
+
+                            if (rowsAffected == 0)
+                            {
+                                transaction.Rollback();
+                                return NotFound(new { error = $"No se encontró la categoría con ID {id}" });
+                            }
+                        }
+
+                        // 2. Eliminar todas las relaciones existentes de esta categoría
+                        string queryDelete = @"DELETE FROM Ideas_categorias_categorizer
+                                             WHERE IdCategoria = @IdCategoria";
+
+                        using (SqlCommand cmd = new SqlCommand(queryDelete, conn, transaction))
+                        {
+                            cmd.Parameters.AddWithValue("@IdCategoria", id);
+                            cmd.ExecuteNonQuery();
+                        }
+
+                        // 3. Insertar las nuevas relaciones si hay ideas
+                        if (!string.IsNullOrWhiteSpace(request.ListaIdeas))
+                        {
+                            var ideasArray = request.ListaIdeas.Split(',', StringSplitOptions.RemoveEmptyEntries);
+
+                            foreach (var idIdeaStr in ideasArray)
+                            {
+                                if (int.TryParse(idIdeaStr.Trim(), out int idIdea))
+                                {
+                                    string queryInsert = @"INSERT INTO Ideas_categorias_categorizer (IdCategoria, IdIdea)
+                                                         VALUES (@IdCategoria, @IdIdea)";
+
+                                    using (SqlCommand cmd = new SqlCommand(queryInsert, conn, transaction))
+                                    {
+                                        cmd.Parameters.AddWithValue("@IdCategoria", id);
+                                        cmd.Parameters.AddWithValue("@IdIdea", idIdea);
+                                        cmd.ExecuteNonQuery();
+                                    }
+                                }
+                            }
+                        }
+
+                        // Confirmar transacción
+                        transaction.Commit();
+                        return Ok(new { message = "Categoría actualizada correctamente", id = id });
+                    }
+                    catch (Exception)
+                    {
+                        transaction.Rollback();
+                        throw;
+                    }
                 }
             }
         }
@@ -613,19 +716,49 @@ public class CategorizerController : ControllerBase
             try
             {
                 conn.Open();
-                string query = "DELETE FROM Categorias_Categorizer WHERE Id = @Id";
 
-                using (SqlCommand cmd = new SqlCommand(query, conn))
+                // Iniciar transacción para asegurar que ambas eliminaciones se hagan o ninguna
+                using (SqlTransaction transaction = conn.BeginTransaction())
                 {
-                    cmd.Parameters.AddWithValue("@Id", id);
-                    int rowsAffected = cmd.ExecuteNonQuery();
-
-                    if (rowsAffected == 0)
+                    try
                     {
-                        return NotFound(new { error = $"No se encontró la categoría con ID {id}" });
-                    }
+                        // 1. Primero eliminar todas las relaciones de ideas asociadas a esta categoría
+                        string queryDeleteRelaciones = @"DELETE FROM Ideas_categorias_categorizer
+                                                        WHERE IdCategoria = @IdCategoria";
 
-                    return Ok(new { message = "Categoría eliminada correctamente", id = id });
+                        using (SqlCommand cmd = new SqlCommand(queryDeleteRelaciones, conn, transaction))
+                        {
+                            cmd.Parameters.AddWithValue("@IdCategoria", id);
+                            int ideasEliminadas = cmd.ExecuteNonQuery();
+                            _logger.LogInformation("Eliminadas {Count} relaciones de ideas para categoría {Id}", ideasEliminadas, id);
+                        }
+
+                        // 2. Luego eliminar la categoría
+                        string queryDeleteCategoria = @"DELETE FROM Categorias_Categorizer
+                                                       WHERE Id = @Id";
+
+                        using (SqlCommand cmd = new SqlCommand(queryDeleteCategoria, conn, transaction))
+                        {
+                            cmd.Parameters.AddWithValue("@Id", id);
+                            int rowsAffected = cmd.ExecuteNonQuery();
+
+                            if (rowsAffected == 0)
+                            {
+                                transaction.Rollback();
+                                return NotFound(new { error = $"No se encontró la categoría con ID {id}" });
+                            }
+                        }
+
+                        // Confirmar transacción
+                        transaction.Commit();
+                        _logger.LogInformation("Categoría {Id} eliminada exitosamente", id);
+                        return Ok(new { message = "Categoría eliminada correctamente", id = id });
+                    }
+                    catch (Exception)
+                    {
+                        transaction.Rollback();
+                        throw;
+                    }
                 }
             }
             catch (Exception ex)
@@ -807,56 +940,99 @@ public class CategorizerController : ControllerBase
                             }
                         }
 
-                        // Obtener todas las categorías de la fase anterior
-                        string getCategoriasQuery = @"SELECT Nombre 
-                                                    FROM Categorias_Categorizer 
+                        // Obtener todas las categorías de la fase anterior con sus IDs e ideas
+                        string getCategoriasQuery = @"SELECT Id, Nombre
+                                                    FROM Categorias_Categorizer
                                                     WHERE IdCategorizer = @IdCategorizer AND Fase = @FaseAnterior";
-                        
-                        var categoriasAnteriores = new List<string>();
+
+                        var categoriasAnteriores = new List<(int Id, string Nombre)>();
                         using (SqlCommand getCmd = new SqlCommand(getCategoriasQuery, conn, transaction))
                         {
                             getCmd.Parameters.AddWithValue("@IdCategorizer", idCategorizer);
                             getCmd.Parameters.AddWithValue("@FaseAnterior", fasesActuales);
-                            
+
                             using (SqlDataReader reader = getCmd.ExecuteReader())
                             {
                                 while (reader.Read())
                                 {
-                                    categoriasAnteriores.Add(reader["Nombre"].ToString());
+                                    categoriasAnteriores.Add((
+                                        (int)reader["Id"],
+                                        reader["Nombre"].ToString()
+                                    ));
                                 }
                             }
                         }
 
-                        // Duplicar las categorías con la nueva fase
-                        string insertQuery = @"INSERT INTO Categorias_Categorizer (IdCategorizer, Fase, Nombre) 
-                                             VALUES (@IdCategorizer, @NuevaFase, @Nombre)";
-                        
+                        // Duplicar las categorías con la nueva fase y copiar sus ideas
+                        string insertCategoriaQuery = @"INSERT INTO Categorias_Categorizer (IdCategorizer, Fase, Nombre)
+                                                      VALUES (@IdCategorizer, @NuevaFase, @Nombre);
+                                                      SELECT SCOPE_IDENTITY();";
+
                         int categoriasDuplicadas = 0;
-                        foreach (var nombreCategoria in categoriasAnteriores)
+                        int ideasCopiadas = 0;
+
+                        foreach (var (idCategoriaAnterior, nombreCategoria) in categoriasAnteriores)
                         {
-                            using (SqlCommand insertCmd = new SqlCommand(insertQuery, conn, transaction))
+                            // Insertar la nueva categoría
+                            int idNuevaCategoria;
+                            using (SqlCommand insertCmd = new SqlCommand(insertCategoriaQuery, conn, transaction))
                             {
                                 insertCmd.Parameters.AddWithValue("@IdCategorizer", idCategorizer);
                                 insertCmd.Parameters.AddWithValue("@NuevaFase", nuevaFase);
                                 insertCmd.Parameters.AddWithValue("@Nombre", nombreCategoria);
-                                
-                                insertCmd.ExecuteNonQuery();
+
+                                idNuevaCategoria = Convert.ToInt32(insertCmd.ExecuteScalar());
                                 categoriasDuplicadas++;
+                            }
+
+                            // Copiar las ideas de la categoría anterior a la nueva categoría
+                            string getIdeasQuery = @"SELECT IdIdea
+                                                   FROM Ideas_categorias_categorizer
+                                                   WHERE IdCategoria = @IdCategoriaAnterior";
+
+                            var ideas = new List<int>();
+                            using (SqlCommand getIdeasCmd = new SqlCommand(getIdeasQuery, conn, transaction))
+                            {
+                                getIdeasCmd.Parameters.AddWithValue("@IdCategoriaAnterior", idCategoriaAnterior);
+
+                                using (SqlDataReader reader = getIdeasCmd.ExecuteReader())
+                                {
+                                    while (reader.Read())
+                                    {
+                                        ideas.Add((int)reader["IdIdea"]);
+                                    }
+                                }
+                            }
+
+                            // Insertar las ideas en la nueva categoría
+                            string insertIdeaQuery = @"INSERT INTO Ideas_categorias_categorizer (IdCategoria, IdIdea)
+                                                     VALUES (@IdCategoria, @IdIdea)";
+
+                            foreach (var idIdea in ideas)
+                            {
+                                using (SqlCommand insertIdeaCmd = new SqlCommand(insertIdeaQuery, conn, transaction))
+                                {
+                                    insertIdeaCmd.Parameters.AddWithValue("@IdCategoria", idNuevaCategoria);
+                                    insertIdeaCmd.Parameters.AddWithValue("@IdIdea", idIdea);
+                                    insertIdeaCmd.ExecuteNonQuery();
+                                    ideasCopiadas++;
+                                }
                             }
                         }
 
                         // Confirmar la transacción
                         transaction.Commit();
 
-                        _logger.LogInformation("Nueva fase iniciada exitosamente. Fase anterior: {FaseAnterior}, Nueva fase: {NuevaFase}, Categorías duplicadas: {CategoriasDuplicadas}", 
-                            fasesActuales, nuevaFase, categoriasDuplicadas);
+                        _logger.LogInformation("Nueva fase iniciada exitosamente. Fase anterior: {FaseAnterior}, Nueva fase: {NuevaFase}, Categorías duplicadas: {CategoriasDuplicadas}, Ideas copiadas: {IdeasCopiadas}",
+                            fasesActuales, nuevaFase, categoriasDuplicadas, ideasCopiadas);
 
-                        return Ok(new { 
-                            message = "Nueva fase iniciada correctamente", 
+                        return Ok(new {
+                            message = "Nueva fase iniciada correctamente",
                             idCategorizer = idCategorizer,
                             faseAnterior = fasesActuales,
                             nuevaFase = nuevaFase,
-                            categoriasDuplicadas = categoriasDuplicadas
+                            categoriasDuplicadas = categoriasDuplicadas,
+                            ideasCopiadas = ideasCopiadas
                         });
                     }
                     catch (Exception ex)
@@ -1219,12 +1395,20 @@ public class CategoriaItem
     public int Fase { get; set; }
     public string? Nombre { get; set; }
     public int IdProy { get; set; }
+    public string? ListaIdeas { get; set; }
 }
 
 public class CategoriaRequest
 {
     public int Fase { get; set; }
     public string? Nombre { get; set; }
+}
+
+public class CategoriaUpdateRequest
+{
+    public int Fase { get; set; }
+    public string? Nombre { get; set; }
+    public string? ListaIdeas { get; set; }
 }
 
 public class CategoriasResponse
