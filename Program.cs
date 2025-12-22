@@ -37,8 +37,12 @@ class Program
             endpoints.MapControllers();
         });
 
-        Console.WriteLine("Servidor SignalR en ejecución en http://localhost:5000/chatHub");
+        // Obtener puerto de la variable de entorno o usar 5000 por defecto
+        var port = Environment.GetEnvironmentVariable("PORT") ?? "5000";
+        var url = $"http://0.0.0.0:{port}";
         
-        app.Run("http://localhost:5000");
+        Console.WriteLine($"Servidor SignalR en ejecución en {url}/chatHub");
+        
+        app.Run(url);
     }
 }
