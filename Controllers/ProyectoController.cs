@@ -198,6 +198,7 @@ public class ProyectoController : ControllerBase
         }
     }
 
+    /*
     // Actualizar proyecto existente
     [HttpPut("{id}")]
     public IActionResult UpdateProyecto(int id, [FromBody] ProyectoRequest request)
@@ -243,6 +244,9 @@ public class ProyectoController : ControllerBase
         }
     }
 
+    */
+
+    /*
     // Eliminar proyecto
     [HttpDelete("{id}")]
     public IActionResult DeleteProyecto(int id)
@@ -274,6 +278,8 @@ public class ProyectoController : ControllerBase
             }
         }
     }
+
+    */
 
     // Obtener estadísticas del proyecto
     [HttpGet("{id}/estadisticas")]

@@ -13,7 +13,7 @@ public class UsuarioController : ControllerBase
 
     public UsuarioController(ILogger<UsuarioController> logger)
     {
-        _connectionString = @"Data Source=189.195.162.46;Initial Catalog=HerramientasV3;User ID=sa;Password=sqlSA%;Encrypt=True;TrustServerCertificate=True";
+        _connectionString = @"Data Source=LAPTOP-7MITNTQF\SQLEXPRESS;Initial Catalog=HerramientasV3;User ID=sa;Password=admin;Encrypt=True;TrustServerCertificate=True";
         _logger = logger;
     }
 
@@ -150,6 +150,7 @@ public class UsuarioController : ControllerBase
         }
     }
 
+    /*
     // Actualizar usuario existente
     [HttpPut("{id}")]
     public IActionResult UpdateUsuario(int id, [FromBody] UsuarioRequest request)
@@ -200,6 +201,9 @@ public class UsuarioController : ControllerBase
         }
     }
 
+    */
+
+    /*
     // Eliminar usuario
     [HttpDelete("{id}")]
     public IActionResult DeleteUsuario(int id)
@@ -231,6 +235,8 @@ public class UsuarioController : ControllerBase
             }
         }
     }
+
+    */
 
     // Obtener estadísticas del usuario
     [HttpGet("{id}/estadisticas")]

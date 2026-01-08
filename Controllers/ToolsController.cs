@@ -97,7 +97,7 @@ public class ToolsController : ControllerBase
             }
         }
     }
-
+    /*
     // Crear nueva herramienta
     [HttpPost]
     public IActionResult CreateTool([FromBody] ToolRequest request)
@@ -211,6 +211,8 @@ public class ToolsController : ControllerBase
             }
         }
     }
+
+    */
 }
 
 public class ToolItem

@@ -18,7 +18,13 @@ class Program
         {
             options.AddDefaultPolicy(builder =>
             {
-                builder.SetIsOriginAllowed(origin => true)
+                builder.WithOrigins(
+                    "http://localhost:4200",                              // Desarrollo local
+                    "https://localhost:4200",                             // Desarrollo local HTTPS
+                    "http://127.0.0.1:4200",                              // Alternativa localhost
+                    "https://127.0.0.1:4200",                             // Alternativa localhost HTTPS
+                    "https://herramientas-wl4c.onrender.com"              // Producción
+                )
                        .AllowAnyHeader()
                        .AllowAnyMethod()
                        .AllowCredentials();

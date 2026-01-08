@@ -260,6 +260,7 @@ public class ProyectosUsuariosController : ControllerBase
         }
     }
 
+    /*
     // Actualizar relación proyecto-usuario
     [HttpPut("{id}")]
     public IActionResult UpdateProyectoUsuario(int id, [FromBody] ProyectoUsuarioRequest request)
@@ -303,6 +304,8 @@ public class ProyectosUsuariosController : ControllerBase
         }
     }
 
+    */
+    /*
     // Eliminar relación proyecto-usuario
     [HttpDelete("{id}")]
     public IActionResult DeleteProyectoUsuario(int id)
@@ -334,6 +337,8 @@ public class ProyectosUsuariosController : ControllerBase
             }
         }
     }
+
+    */
 }
 
 public class ProyectoUsuarioItem
